@@ -1,0 +1,279 @@
+"""Tactical puzzle definitions and validation.
+
+A puzzle is a FEN position plus a sequence of moves the player must find.
+The player always plays the side to move; the opponent's replies are
+scripted, so a puzzle is a deterministic "find the line" challenge.
+
+Puzzle fields
+-------------
+id          unique key, also used for save progress
+name        display name
+fen         starting position
+solution    list of UCI moves, player and opponent alternating
+goal        "mate" | "win" | "draw" | "promote"
+difficulty  1..5 stars
+xp, gold    rewards
+briefing    flavour text shown before the puzzle
+hint        a nudge shown when the player asks for help
+chapter     grouping for the level select map
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import chess
+
+
+@dataclass
+class Puzzle:
+    id: str
+    name: str
+    fen: str
+    solution: list[str]
+    goal: str = "mate"
+    difficulty: int = 1
+    xp: int = 40
+    gold: int = 20
+    briefing: str = ""
+    hint: str = ""
+    chapter: str = "Prologue"
+
+    @property
+    def board(self) -> chess.Board:
+        return chess.Board(self.fen)
+
+    @property
+    def player_color(self) -> chess.Color:
+        return self.board.turn
+
+    @property
+    def player_moves(self) -> list[str]:
+        """Solution moves the player must play (even indices)."""
+        return self.solution[0::2]
+
+    @property
+    def stars(self) -> str:
+        return "*" * self.difficulty + "." * (5 - self.difficulty)
+
+
+# --------------------------------------------------------------------------
+# Puzzle library
+# --------------------------------------------------------------------------
+PUZZLES: list[Puzzle] = [
+    Puzzle(
+        id="p1",
+        name="First Blood",
+        fen="6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
+        solution=["a1a8"],
+        goal="mate",
+        difficulty=1,
+        xp=40,
+        gold=25,
+        chapter="Prologue",
+        briefing="The enemy king hides behind his pawns. Your rook sees the "
+                 "back rank - deliver the blow.",
+        hint="The back rank is undefended. Slide the rook all the way up.",
+    ),
+    Puzzle(
+        id="p2",
+        name="The Fork",
+        fen="r3k2r/ppp2ppp/8/3N4/8/8/PPP2PPP/R3K2R w KQkq - 0 1",
+        solution=["d5c7", "e8d7", "c7a8"],
+        goal="win",
+        difficulty=2,
+        xp=60,
+        gold=35,
+        chapter="Prologue",
+        briefing="A knight in the centre can touch everything. Find the "
+                 "square where it attacks king and rook at once.",
+        hint="Look for a square that checks the king and hits a rook.",
+    ),
+    Puzzle(
+        id="p3",
+        name="Back Rank Execution",
+        fen="6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1",
+        solution=["d1d8"],
+        goal="mate",
+        difficulty=1,
+        xp=45,
+        gold=25,
+        chapter="Prologue",
+        briefing="The black king's own pawns are his prison. Punish him.",
+        hint="The eighth rank is empty. One move ends it.",
+    ),
+    Puzzle(
+        id="p4",
+        name="Smothered Mate",
+        fen="6rk/6pp/8/6N1/8/8/8/6K1 w - - 0 1",
+        solution=["g5f7"],
+        goal="mate",
+        difficulty=3,
+        xp=90,
+        gold=50,
+        chapter="Chapter I - The Knight's Path",
+        briefing="The king is buried alive by his own pieces. A knight can "
+                 "reach where nothing else can.",
+        hint="A knight check the king cannot escape - and no piece can take it.",
+    ),
+    Puzzle(
+        id="p5",
+        name="The Pawn Fork",
+        fen="r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R b KQkq - 0 1",
+        solution=["f6e4", "c3e4", "d7d5"],
+        goal="win",
+        difficulty=3,
+        xp=80,
+        gold=45,
+        chapter="Chapter I - The Knight's Path",
+        briefing="You are Black. Trade on e4 to draw the white knight out, "
+                 "then find the pawn thrust that attacks two pieces at once.",
+        hint="After Nxe4 Nxe4, a single pawn move hits both the knight and bishop.",
+    ),
+    Puzzle(
+        id="p6",
+        name="Promotion Race",
+        fen="8/P6k/8/8/8/8/6K1/8 w - - 0 1",
+        solution=["a7a8q"],
+        goal="promote",
+        difficulty=1,
+        xp=40,
+        gold=20,
+        chapter="Chapter I - The Knight's Path",
+        briefing="A lone pawn stands one step from glory. Push it home.",
+        hint="Advance the pawn to the eighth rank.",
+    ),
+    Puzzle(
+        id="p7",
+        name="Double Attack",
+        fen="2r3k1/5ppp/8/8/8/8/5PPP/2R3K1 w - - 0 1",
+        solution=["c1c8"],
+        goal="win",
+        difficulty=2,
+        xp=65,
+        gold=35,
+        chapter="Chapter II - The Rook's Gambit",
+        briefing="Rooks love open files. Trade into a winning endgame.",
+        hint="Capture on the eighth rank.",
+    ),
+    Puzzle(
+        id="p8",
+        name="The Pin",
+        fen="r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 0 1",
+        solution=["c4f7", "e8f7", "f3g5"],
+        goal="win",
+        difficulty=4,
+        xp=120,
+        gold=70,
+        chapter="Chapter II - The Rook's Gambit",
+        briefing="A sacrifice on f7 drags the king out. Follow up with "
+                 "precision - the fork must land on the queen.",
+        hint="Sacrifice the bishop on f7, then find the knight check that "
+             "also attacks the queen on d8.",
+    ),
+]
+
+
+def get_puzzle(puzzle_id: str) -> Puzzle | None:
+    for p in PUZZLES:
+        if p.id == puzzle_id:
+            return p
+    return None
+
+
+def puzzles_in_chapter(chapter: str) -> list[Puzzle]:
+    return [p for p in PUZZLES if p.chapter == chapter]
+
+
+def chapters() -> list[str]:
+    seen: list[str] = []
+    for p in PUZZLES:
+        if p.chapter not in seen:
+            seen.append(p.chapter)
+    return seen
+
+
+class PuzzleSession:
+    """Tracks progress through a single puzzle's solution line."""
+
+    def __init__(self, puzzle: Puzzle) -> None:
+        self.puzzle = puzzle
+        self.board = puzzle.board
+        self.step = 0
+        self.mistakes = 0
+        self.hints_used = 0
+        self.solved = False
+        self.failed = False
+        self.history: list[chess.Move] = []
+
+    # ------------------------------------------------------------------
+    @property
+    def expected_uci(self) -> str | None:
+        if self.step < len(self.puzzle.solution):
+            return self.puzzle.solution[self.step]
+        return None
+
+    @property
+    def is_player_turn(self) -> bool:
+        return self.step % 2 == 0 and not self.solved and not self.failed
+
+    @property
+    def progress(self) -> float:
+        return self.step / max(1, len(self.puzzle.solution))
+
+    # ------------------------------------------------------------------
+    def try_move(self, move: chess.Move) -> str:
+        """Attempt a player move.
+
+        Returns one of: "correct", "wrong", "solved", "failed".
+        """
+        expected = self.expected_uci
+        if expected is None:
+            return "solved"
+
+        if move.uci() != expected:
+            self.mistakes += 1
+            return "wrong"
+
+        self.board.push(move)
+        self.history.append(move)
+        self.step += 1
+
+        if self.step >= len(self.puzzle.solution):
+            self.solved = True
+            return "solved"
+
+        # Scripted opponent reply
+        reply = chess.Move.from_uci(self.puzzle.solution[self.step])
+        self.board.push(reply)
+        self.history.append(reply)
+        self.step += 1
+
+        if self.step >= len(self.puzzle.solution):
+            self.solved = True
+            return "solved"
+        return "correct"
+
+    def hint_move(self) -> chess.Move | None:
+        expected = self.expected_uci
+        if expected is None:
+            return None
+        self.hints_used += 1
+        return chess.Move.from_uci(expected)
+
+    def reset(self) -> None:
+        self.board = self.puzzle.board
+        self.step = 0
+        self.mistakes = 0
+        self.hints_used = 0
+        self.solved = False
+        self.failed = False
+        self.history.clear()
+
+    def score(self) -> tuple[int, int]:
+        """Return (xp, gold) earned, reduced by mistakes and hints."""
+        xp = self.puzzle.xp
+        gold = self.puzzle.gold
+        xp = max(10, xp - self.mistakes * 10 - self.hints_used * 5)
+        gold = max(5, gold - self.mistakes * 5 - self.hints_used * 5)
+        return xp, gold
