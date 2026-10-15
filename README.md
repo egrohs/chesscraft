@@ -8,8 +8,9 @@ up your hero.
 ## Features
 
 - **Dark-fantasy RPG interface** - animated main menu, chapter map, hero sheet.
-- **Painted character art** - the illustrations in `art/` are turned into
-  circular piece tokens at runtime (see `chessrpg/assets.py`).
+- **Standard chess pieces** - classic Unicode piece glyphs by default, with an
+  optional painted-token style cropped from the illustrations in `art/`
+  (see `chessrpg/assets.py` and `config.PIECE_STYLE`).
 - **Full chess rules** - powered by `python-chess`, so every move is legal.
 - **Tactical puzzles** - find the winning line; wrong moves cost reward.
 - **RPG progression** - XP, levels, gold, stats and a persistent save file.
@@ -41,6 +42,20 @@ python main.py
 | Cancel selection  | Right click or click empty space       |
 | Back to menu      | `Esc`                                  |
 
+## Piece style
+
+Pieces are drawn as the **standard chess glyphs** (king, queen, rook, bishop,
+knight, pawn) by default. Change the style in `chessrpg/config.py`:
+
+```python
+PIECE_STYLE = "standard"   # classic Unicode chess pieces (default)
+PIECE_STYLE = "art"        # painted character tokens from the art/ folder
+```
+
+The `"art"` style crops each illustration in `art/` into a circular character
+token; the `"standard"` style renders crisp glyphs with a contrasting outline
+so they stay legible on both light and dark squares.
+
 ## Project layout
 
 ```
@@ -48,7 +63,7 @@ main.py                     entry point
 chessrpg/
   config.py                 window, layout and tuning constants
   theme.py                  palette, fonts, drawing helpers
-  assets.py                 art loading + piece-token extraction
+  assets.py                 standard glyph pieces + art-token extraction
   ui.py                     buttons, labels, bars, tooltips
   board.py                  board rendering and mouse input
   scene.py                  scene base class + fade transitions

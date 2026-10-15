@@ -18,6 +18,16 @@ from .assets import ASSETS
 
 FILES = "abcdefgh"
 
+# chess piece symbol letter -> logical piece name used by the asset tables
+PIECE_NAMES = {
+    "k": "king",
+    "q": "queen",
+    "r": "rook",
+    "b": "bishop",
+    "n": "knight",
+    "p": "pawn",
+}
+
 
 def square_to_xy(square: int, origin: tuple[int, int], flipped: bool = False) -> tuple[int, int]:
     """Top-left pixel of ``square`` given the board origin."""
@@ -312,7 +322,7 @@ class BoardView:
             piece = self.board.piece_at(self.dragging)
             if piece is not None:
                 size = config.SQUARE_SIZE
-                surf = ASSETS.piece_surface(piece.symbol().lower(), self.art_set, size)
+                surf = self._piece_surface(piece)
                 rect = surf.get_rect(center=self.drag_pos)
                 shadow = pygame.Surface((size, size), pygame.SRCALPHA)
                 shadow.blit(surf, (0, 0))
@@ -324,12 +334,19 @@ class BoardView:
         x, y = square_to_xy(square, self.origin, self.flipped)
         self._blit_piece_at(surface, piece, (x, y))
 
-    def _blit_piece_at(self, surface, piece, pos) -> None:
+    def _piece_surface(self, piece) -> pygame.Surface:
+        """Return the surface for ``piece`` using the configured style."""
         size = config.SQUARE_SIZE
-        surf = ASSETS.piece_surface(piece.symbol().lower(), self.art_set, size)
+        ptype = PIECE_NAMES.get(piece.symbol().lower(), "pawn")
+        if config.PIECE_STYLE == "standard":
+            return ASSETS.standard_piece(ptype, piece.color == chess.BLACK, size)
+        surf = ASSETS.piece_surface(ptype, self.art_set, size)
         if piece.color == chess.BLACK:
             surf = _darken(surf, 0.55)
-        surface.blit(surf, pos)
+        return surf
+
+    def _blit_piece_at(self, surface, piece, pos) -> None:
+        surface.blit(self._piece_surface(piece), pos)
 
 
 def _darken(surf: pygame.Surface, factor: float) -> pygame.Surface:

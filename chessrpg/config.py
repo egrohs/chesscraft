@@ -29,6 +29,11 @@ BOARD_PIXELS = 576                      # 8 * 72
 SQUARE_SIZE = BOARD_PIXELS // BOARD_SQUARES
 BOARD_MARGIN = 24
 
+# Piece rendering style:
+#   "standard" - classic Unicode chess glyphs (default)
+#   "art"      - painted character tokens cropped from the art/ folder
+PIECE_STYLE = "standard"
+
 # --------------------------------------------------------------------------
 # Gameplay tuning
 # --------------------------------------------------------------------------

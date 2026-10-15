@@ -1,14 +1,14 @@
 """Asset loading, sprite extraction and caching.
 
-The ``art/`` folder contains painted *illustrations* (full scenes, mostly
-1408x768) rather than isolated piece sprites. To use them on a chess board
-we extract the character from each illustration:
+Pieces are drawn in one of two styles (see ``config.PIECE_STYLE``):
 
-1. find the horizontal band with the most visual detail (the character),
-2. crop a square around it,
-3. knock out the flat background so the piece sits cleanly on a square.
+* ``"standard"`` - classic Unicode chess glyphs rendered with a contrasting
+  outline. This is the default and needs no art files.
+* ``"art"`` - painted character tokens cropped from the illustrations in
+  ``art/``. Those files are full scenes (mostly 1408x768) rather than isolated
+  sprites, so each one is cropped to the character and framed as a medallion.
 
-Two art sets exist:
+Two art sets exist for the ``"art"`` style:
 
 * ``base``  - classic piece portraits (king, queen, rook, bishop, knight)
 * ``class`` - RPG class variants (healer-king, sorcerer-queen, ...)
@@ -55,6 +55,31 @@ PAWN_ART = {
 # character; narrower images are assumed to already be piece portraits.
 SCENE_ASPECT = 1.35
 
+# Standard chess piece glyphs (Unicode). These are the classic piece shapes
+# every chess player recognises, used by the "standard" piece style.
+WHITE_GLYPHS = {
+    "king": "\u2654",
+    "queen": "\u2655",
+    "rook": "\u2656",
+    "bishop": "\u2657",
+    "knight": "\u2658",
+    "pawn": "\u2659",
+}
+BLACK_GLYPHS = {
+    "king": "\u265A",
+    "queen": "\u265B",
+    "rook": "\u265C",
+    "bishop": "\u265D",
+    "knight": "\u265E",
+    "pawn": "\u265F",
+}
+
+# Fonts that ship a solid set of chess glyphs, best first.
+GLYPH_FONTS = [
+    "segoeuisymbol", "segoeui", "cambria", "dejavusans", "freesansbold",
+    "arial", "timesnewroman",
+]
+
 
 class AssetManager:
     """Loads, extracts, caches and scales game art."""
@@ -64,6 +89,10 @@ class AssetManager:
         self._sprite: dict[str, pygame.Surface] = {}
         self._scaled: dict[tuple[str, int, int], pygame.Surface] = {}
         self._portraits: dict[tuple[str, int], pygame.Surface] = {}
+        self._glyph_font: pygame.font.Font | None = None
+        self._glyph_font_path: str | None = None
+        self._glyph_font_resolved = False
+        self._standard: dict[tuple[str, bool, int], pygame.Surface] = {}
 
     # ------------------------------------------------------------------
     # Raw loading
@@ -168,6 +197,195 @@ class AssetManager:
         pygame.draw.circle(token, theme.GOLD_DARK, (size // 2, size // 2), size // 2 - 1, 3)
         pygame.draw.circle(token, (0, 0, 0, 120), (size // 2, size // 2), size // 2, 1)
         return token
+
+    # ------------------------------------------------------------------
+    # Standard (Unicode glyph) pieces
+    # ------------------------------------------------------------------
+    def _font_has_chess_glyphs(self, path: str) -> bool:
+        """Return True if ``path`` renders the six chess glyphs distinctly.
+
+        Many fonts resolve via :func:`pygame.font.match_font` but do not
+        actually contain the chess code points; they silently fall back to
+        the same "missing glyph" box for every piece. We detect that by
+        rendering two different pieces and comparing the results.
+        """
+        try:
+            probe = pygame.font.Font(path, 48)
+        except (pygame.error, OSError):
+            return False
+        king = pygame.image.tobytes(probe.render("\u2654", True, (0, 0, 0)), "RGBA")
+        pawn = pygame.image.tobytes(probe.render("\u2659", True, (0, 0, 0)), "RGBA")
+        return king != pawn
+
+    def _resolve_glyph_font_path(self) -> str | None:
+        """Find the first available font that really has chess glyphs."""
+        if self._glyph_font_resolved:
+            return self._glyph_font_path
+        self._glyph_font_resolved = True
+        for name in GLYPH_FONTS:
+            found = pygame.font.match_font(name)
+            if found and self._font_has_chess_glyphs(found):
+                self._glyph_font_path = found
+                break
+        return self._glyph_font_path
+
+    def _glyph_font_for(self, size: int) -> pygame.font.Font:
+        """Return a font able to render the chess glyphs at ``size``."""
+        if self._glyph_font is not None and self._glyph_font.get_height() >= size:
+            return self._glyph_font
+        path = self._resolve_glyph_font_path()
+        # Render large then scale down for crisp edges.
+        self._glyph_font = pygame.font.Font(path, int(size * 1.6)) if path \
+            else pygame.font.Font(None, int(size * 1.6))
+        return self._glyph_font
+
+    def _draw_piece_shape(self, piece_type: str, is_black: bool, size: int) -> pygame.Surface:
+        """Draw a distinct procedural silhouette for ``piece_type``.
+
+        Used as a fallback when no installed font provides the chess glyphs,
+        so every piece still renders with its own recognisable shape.
+        """
+        if is_black:
+            body, outline = (28, 28, 34), (232, 232, 238)
+        else:
+            body, outline = (246, 246, 250), (26, 26, 32)
+
+        piece = pygame.Surface((size, size), pygame.SRCALPHA)
+        cx = size // 2
+        stroke = max(2, size // 18)
+        base_y = int(size * 0.86)
+        top_y = int(size * 0.16)
+
+        def disc(center, radius):
+            pygame.draw.circle(piece, body, center, radius)
+            pygame.draw.circle(piece, outline, center, radius, stroke)
+
+        def rect(r):
+            pygame.draw.rect(piece, body, r, border_radius=max(2, size // 20))
+            pygame.draw.rect(piece, outline, r, stroke, border_radius=max(2, size // 20))
+
+        # Shared pedestal for every piece.
+        rect(pygame.Rect(int(size * 0.22), base_y - int(size * 0.10),
+                         int(size * 0.56), int(size * 0.12)))
+
+        if piece_type == "pawn":
+            disc((cx, int(size * 0.40)), int(size * 0.13))
+            rect(pygame.Rect(cx - int(size * 0.10), int(size * 0.50),
+                             int(size * 0.20), int(size * 0.28)))
+        elif piece_type == "rook":
+            rect(pygame.Rect(int(size * 0.28), int(size * 0.30),
+                             int(size * 0.44), int(size * 0.48)))
+            for i in range(3):
+                bx = int(size * (0.28 + i * 0.16))
+                rect(pygame.Rect(bx, top_y, int(size * 0.10), int(size * 0.12)))
+        elif piece_type == "knight":
+            pts = [(int(size * 0.30), base_y - int(size * 0.10)),
+                   (int(size * 0.34), int(size * 0.34)),
+                   (int(size * 0.52), top_y),
+                   (int(size * 0.70), int(size * 0.30)),
+                   (int(size * 0.62), int(size * 0.52)),
+                   (int(size * 0.72), base_y - int(size * 0.10))]
+            pygame.draw.polygon(piece, body, pts)
+            pygame.draw.polygon(piece, outline, pts, stroke)
+        elif piece_type == "bishop":
+            disc((cx, int(size * 0.30)), int(size * 0.12))
+            pygame.draw.polygon(piece, body, [
+                (cx, int(size * 0.18)),
+                (int(size * 0.34), int(size * 0.62)),
+                (int(size * 0.66), int(size * 0.62)),
+            ])
+            pygame.draw.polygon(piece, outline, [
+                (cx, int(size * 0.18)),
+                (int(size * 0.34), int(size * 0.62)),
+                (int(size * 0.66), int(size * 0.62)),
+            ], stroke)
+            rect(pygame.Rect(int(size * 0.30), int(size * 0.60),
+                             int(size * 0.40), int(size * 0.16)))
+        elif piece_type == "queen":
+            disc((cx, int(size * 0.26)), int(size * 0.11))
+            for i in range(3):
+                px = int(size * (0.30 + i * 0.20))
+                disc((px, int(size * 0.20)), int(size * 0.06))
+            pygame.draw.polygon(piece, body, [
+                (int(size * 0.30), int(size * 0.34)),
+                (int(size * 0.70), int(size * 0.34)),
+                (int(size * 0.62), int(size * 0.66)),
+                (int(size * 0.38), int(size * 0.66)),
+            ])
+            pygame.draw.polygon(piece, outline, [
+                (int(size * 0.30), int(size * 0.34)),
+                (int(size * 0.70), int(size * 0.34)),
+                (int(size * 0.62), int(size * 0.66)),
+                (int(size * 0.38), int(size * 0.66)),
+            ], stroke)
+        else:  # king
+            rect(pygame.Rect(cx - int(size * 0.05), int(size * 0.12),
+                             int(size * 0.10), int(size * 0.20)))
+            rect(pygame.Rect(cx - int(size * 0.13), int(size * 0.18),
+                             int(size * 0.26), int(size * 0.08)))
+            pygame.draw.polygon(piece, body, [
+                (int(size * 0.30), int(size * 0.36)),
+                (int(size * 0.70), int(size * 0.36)),
+                (int(size * 0.62), int(size * 0.66)),
+                (int(size * 0.38), int(size * 0.66)),
+            ])
+            pygame.draw.polygon(piece, outline, [
+                (int(size * 0.30), int(size * 0.36)),
+                (int(size * 0.70), int(size * 0.36)),
+                (int(size * 0.62), int(size * 0.66)),
+                (int(size * 0.38), int(size * 0.66)),
+            ], stroke)
+
+        return piece
+
+    def standard_piece(self, piece_type: str, is_black: bool, size: int) -> pygame.Surface:
+        """Render a classic chess piece glyph fitted into a ``size`` square.
+
+        The glyph is drawn with a contrasting outline so it stays legible on
+        both light and dark squares, then scaled to fill the square. If no
+        installed font provides the chess glyphs, a distinct procedural
+        silhouette is drawn instead so pieces never collapse to one shape.
+        """
+        key = (piece_type, is_black, size)
+        cached = self._standard.get(key)
+        if cached is not None:
+            return cached
+
+        if self._resolve_glyph_font_path() is None:
+            piece = self._draw_piece_shape(piece_type, is_black, size)
+            self._standard[key] = piece
+            return piece
+
+        glyph = (BLACK_GLYPHS if is_black else WHITE_GLYPHS).get(piece_type, WHITE_GLYPHS["pawn"])
+        font = self._glyph_font_for(size)
+
+        if is_black:
+            body, outline = (28, 28, 34), (232, 232, 238)
+        else:
+            body, outline = (246, 246, 250), (26, 26, 32)
+
+        # Draw the glyph several times offset to build a clean outline.
+        base = font.render(glyph, True, body)
+        out = font.render(glyph, True, outline)
+        w, h = base.get_size()
+        pad = max(2, size // 16)
+        canvas = pygame.Surface((w + pad * 2, h + pad * 2), pygame.SRCALPHA)
+        for dx in (-pad, 0, pad):
+            for dy in (-pad, 0, pad):
+                if dx or dy:
+                    canvas.blit(out, (pad + dx, pad + dy))
+        canvas.blit(base, (pad, pad))
+
+        # Scale to fit the square, preserving aspect ratio.
+        cw, ch = canvas.get_size()
+        scale = size / max(cw, ch)
+        new_size = (max(1, int(cw * scale)), max(1, int(ch * scale)))
+        scaled = pygame.transform.smoothscale(canvas, new_size)
+
+        piece = pygame.Surface((size, size), pygame.SRCALPHA)
+        piece.blit(scaled, scaled.get_rect(center=(size // 2, size // 2)))
+        self._standard[key] = piece
+        return piece
 
     # ------------------------------------------------------------------
     # Public API
