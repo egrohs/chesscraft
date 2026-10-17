@@ -6,6 +6,10 @@ the enemy king at the far side. Every turn is a chess-like decision: read the
 threats, position yourself, and find the angle to strike. Built with
 **pygame-ce** and **python-chess**.
 
+> **Full rules:** see [`MANUAL.md`](MANUAL.md) for the complete rulebook
+> (terrain, line of sight, every spell, enemy patterns, sanctuaries, puzzles
+> and roguelike progression).
+
 ## The loop
 
 1. **Cross the battlefield.** Move one cell or cast one spell per turn, then
