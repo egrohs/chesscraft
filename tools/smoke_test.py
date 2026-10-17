@@ -17,8 +17,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import chess  # noqa: E402
 import pygame  # noqa: E402
 
-from chessrpg import config  # noqa: E402
-from chessrpg.combat import (  # noqa: E402
+from chesscraft import config  # noqa: E402
+from chesscraft.combat import (  # noqa: E402
     Battlefield,
     Enemy,
     EnemyKind,
@@ -31,9 +31,9 @@ from chessrpg.combat import (  # noqa: E402
     end_player_turn,
     threatened_cells,
 )
-from chessrpg.game import Game  # noqa: E402
-from chessrpg.puzzles import THEMED_PUZZLES, PuzzleSession, themed_puzzle_for  # noqa: E402
-from chessrpg.run import Run, generate_level, spell_offers  # noqa: E402
+from chesscraft.game import Game  # noqa: E402
+from chesscraft.puzzles import THEMED_PUZZLES, PuzzleSession, themed_puzzle_for  # noqa: E402
+from chesscraft.run import Run, generate_level, spell_offers  # noqa: E402
 
 
 # --------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-"""Chess RPG - a tactical puzzle chess RPG.
+"""ChessCraft - a tactical puzzle chess RPG.
 
 A Master of Chess inspired chess simulation RPG where the player
 advances through tactical puzzles instead of full games.

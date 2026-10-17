@@ -1,4 +1,4 @@
-# Arcane Descent - Manual de Regras
+# ChessCraft - Manual de Regras
 
 > Um roguelike tático para PC inspirado em *Hoplite*, com tema de fantasia sombria.
 > Você é um mago atravessando um campo de batalha em grade para abrir uma linha

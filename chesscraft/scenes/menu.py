@@ -29,7 +29,7 @@ class MenuScene(Scene):
         w, h = config.WINDOW_WIDTH, config.WINDOW_HEIGHT
         cx = w // 2
 
-        self.widgets.append(Label((cx, 96), "ARCANE DESCENT", size=72,
+        self.widgets.append(Label((cx, 96), "CHESSCRAFT", size=72,
                                   color=theme.GOLD_BRIGHT, bold=True, center=True))
         self.widgets.append(Label((cx, 152), "A   T A C T I C A L   R O G U E L I K E",
                                   size=22, color=theme.TEXT_DIM, center=True))

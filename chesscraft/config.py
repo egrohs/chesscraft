@@ -16,7 +16,7 @@ SAVE_FILE = os.path.join(SAVE_DIR, "profile.json")
 # --------------------------------------------------------------------------
 # Window
 # --------------------------------------------------------------------------
-TITLE = "Chess RPG - Tactical Trials"
+TITLE = "ChessCraft"
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 FPS = 60

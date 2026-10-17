@@ -1,4 +1,4 @@
-# Arcane Descent
+# ChessCraft
 
 A **tactical roguelike** for PC inspired by *Hoplite*, with a dark-fantasy
 theme. You play a mage crossing a grid battlefield to reach a line of fire on
@@ -114,7 +114,7 @@ offered spells and must solve its puzzle to learn it.
 
 ```
 main.py                     entry point
-chessrpg/
+chesscraft/
   config.py                 window, layout and tuning constants
   theme.py                  palette, fonts, drawing helpers
   assets.py                 standard glyph pieces + art-token extraction
@@ -140,9 +140,9 @@ tools/
 
 ## Adding a spell
 
-1. Add a `Spell` to `SPELL_LIBRARY` in `chessrpg/combat.py`.
+1. Add a `Spell` to `SPELL_LIBRARY` in `chesscraft/combat.py`.
 2. Add its tactical theme to `SPELL_THEME` and a `Puzzle` to `THEMED_PUZZLES`
-   in `chessrpg/puzzles.py`.
+   in `chesscraft/puzzles.py`.
 3. Handle its `SpellKind` in `cast_spell` and `_target_ok` (combat scene).
 
 ## Testing

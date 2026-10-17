@@ -4,7 +4,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import chess
-from chessrpg.puzzles import PUZZLES, THEMED_PUZZLES
+from chesscraft.puzzles import PUZZLES, THEMED_PUZZLES
 
 def show(p):
     b = chess.Board(p.fen)
