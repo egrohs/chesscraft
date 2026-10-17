@@ -18,6 +18,7 @@ import chess  # noqa: E402
 import pygame  # noqa: E402
 
 from chessrpg.game import Game  # noqa: E402
+from chessrpg.run import Run  # noqa: E402
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "shots")
 
@@ -43,38 +44,45 @@ def main() -> int:
     settle(game)
     shot(game, "01_menu")
 
-    # Level select (first chapter)
-    game.scenes_mgr.switch("level_select")
+    # Combat - initial battlefield
+    run = Run(seed=7)
+    run.start()
+    game.scenes_mgr.switch("combat", run=run)
     settle(game)
-    shot(game, "02_level_select")
+    shot(game, "02_combat_start")
 
-    # Puzzle p1 - initial
-    game.scenes_mgr.switch("puzzle", puzzle_id="p1")
+    # Combat - spell selected (targets highlighted)
+    scene = game.scenes["combat"]
+    scene._select_spell("bolt")
+    settle(game, 4)
+    shot(game, "03_combat_bolt")
+
+    # Combat - move mode (reachable cells)
+    scene._select_move()
+    settle(game, 4)
+    shot(game, "04_combat_move")
+
+    # Sanctuary - spell choice
+    game.scenes_mgr.switch("sanctuary", run=run)
     settle(game)
-    shot(game, "03_puzzle_start")
+    shot(game, "05_sanctuary_choose")
 
-    # Puzzle p1 - with a piece selected (legal move dots)
-    scene = game.scenes["puzzle"]
-    scene.board_view.selected = chess.A1
-    scene.board_view.legal_targets = {
-        m.to_square for m in scene.session.board.legal_moves if m.from_square == chess.A1
-    }
-    shot(game, "04_puzzle_selected")
-
-    # Puzzle p1 - solved (result overlay)
-    scene._handle_board_action(("move", chess.A1, chess.A8))
-    settle(game, 20)
-    shot(game, "05_puzzle_victory")
+    # Sanctuary - puzzle
+    sanc = game.scenes["sanctuary"]
+    sanc.on_enter(run=run)
+    sanc._choose(sanc.offers[0])
+    settle(game, 4)
+    shot(game, "06_sanctuary_puzzle")
 
     # Hero sheet
     game.scenes_mgr.switch("hero")
     settle(game)
-    shot(game, "06_hero")
+    shot(game, "07_hero")
 
     # Help
     game.scenes_mgr.switch("help")
     settle(game)
-    shot(game, "07_help")
+    shot(game, "08_help")
 
     pygame.quit()
     print("done")

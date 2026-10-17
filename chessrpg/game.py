@@ -10,7 +10,7 @@ from . import config, theme
 from .assets import ASSETS
 from .rpg import Profile
 from .scene import SceneManager
-from .scenes import HeroScene, LevelSelectScene, MenuScene, PuzzleScene
+from .scenes import CombatScene, HeroScene, MenuScene, SanctuaryScene
 from .scenes.help_scene import HelpScene
 
 
@@ -35,8 +35,8 @@ class Game:
 
     def _register_scenes(self) -> None:
         self.scenes_mgr.register("menu", MenuScene(self))
-        self.scenes_mgr.register("level_select", LevelSelectScene(self))
-        self.scenes_mgr.register("puzzle", PuzzleScene(self))
+        self.scenes_mgr.register("combat", CombatScene(self))
+        self.scenes_mgr.register("sanctuary", SanctuaryScene(self))
         self.scenes_mgr.register("hero", HeroScene(self))
         self.scenes_mgr.register("help", HelpScene(self))
 

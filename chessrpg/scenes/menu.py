@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import math
+import random
 
 import pygame
 
 from .. import config, theme
 from ..assets import ASSETS
+from ..run import Run
 from ..scene import Scene
 from ..ui import Button, Label
 
@@ -27,16 +29,16 @@ class MenuScene(Scene):
         w, h = config.WINDOW_WIDTH, config.WINDOW_HEIGHT
         cx = w // 2
 
-        self.widgets.append(Label((cx, 96), "CHESS RPG", size=76,
+        self.widgets.append(Label((cx, 96), "ARCANE DESCENT", size=72,
                                   color=theme.GOLD_BRIGHT, bold=True, center=True))
-        self.widgets.append(Label((cx, 152), "T A C T I C A L   T R I A L S",
+        self.widgets.append(Label((cx, 152), "A   T A C T I C A L   R O G U E L I K E",
                                   size=22, color=theme.TEXT_DIM, center=True))
 
         bw, bh = 300, 58
         x = cx - bw // 2
-        self.widgets.append(Button((x, 300, bw, bh), "Continue Campaign",
+        self.widgets.append(Button((x, 300, bw, bh), "Begin Descent",
                                    self._on_play, size=24, accent=theme.GOLD))
-        self.widgets.append(Button((x, 372, bw, bh), "Hero & Progress",
+        self.widgets.append(Button((x, 372, bw, bh), "Hero & Tactics",
                                    self._on_hero, size=22, accent=theme.BLUE))
         self.widgets.append(Button((x, 444, bw, bh), "How to Play",
                                    self._on_help, size=22, accent=theme.PURPLE))
@@ -44,12 +46,16 @@ class MenuScene(Scene):
                                    self._on_quit, size=22, accent=theme.RED))
 
         self.widgets.append(Label((cx, h - 40),
-                                  "A tactical puzzle RPG  -  built with pygame-ce",
+                                  "A tactical roguelike  -  built with pygame-ce",
                                   size=15, color=theme.TEXT_MUTED, center=True))
 
     # ------------------------------------------------------------------
     def _on_play(self) -> None:
-        self.game.scenes_mgr.switch("level_select")
+        run = Run(seed=random.randint(0, 2**31 - 1))
+        run.start()
+        hero = self.game.profile.hero
+        hero.runs += 1
+        self.game.scenes_mgr.switch("combat", run=run)
 
     def _on_hero(self) -> None:
         self.game.scenes_mgr.switch("hero")

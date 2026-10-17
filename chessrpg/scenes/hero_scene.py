@@ -1,11 +1,11 @@
-"""Hero scene: character sheet, stats and campaign progress."""
+"""Hero scene: character sheet, learned tactics and roguelike progress."""
 
 from __future__ import annotations
 
 import pygame
 
 from .. import config, theme
-from ..puzzles import PUZZLES
+from ..combat import SPELL_LIBRARY
 from ..scene import Scene
 from ..ui import Button, Label
 
@@ -21,7 +21,7 @@ class HeroScene(Scene):
 
     def _build(self) -> None:
         self.widgets.clear()
-        self.widgets.append(Label((40, 30), "Hero & Progress", size=40,
+        self.widgets.append(Label((40, 30), "Hero & Tactics", size=40,
                                   color=theme.GOLD_BRIGHT, bold=True))
         self.widgets.append(Button((config.WINDOW_WIDTH - 180, 34, 140, 48), "Back",
                                    self._on_back, size=20, accent=theme.RED))
@@ -74,30 +74,34 @@ class HeroScene(Scene):
                            min(1.0, value / 20), fill=color)
             y += 52
 
-        # Progress panel
+        # Tactics panel
         panel = pygame.Rect(500, 110, config.WINDOW_WIDTH - 540, 560)
         theme.draw_panel(surface, panel, fill=theme.BG_PANEL, border=theme.GOLD_DARK, radius=14)
-        theme.draw_text(surface, "Campaign Progress", (panel.x + 30, panel.y + 24), size=26,
+        theme.draw_text(surface, "Mastered Tactics", (panel.x + 30, panel.y + 24), size=26,
                         color=theme.GOLD, bold=True)
 
-        solved = len(hero.solved)
-        total = len(PUZZLES)
-        theme.draw_text(surface, f"{solved} / {total} trials solved",
-                        (panel.right - 30, panel.y + 30), size=18,
+        theme.draw_text(surface, f"Runs: {hero.runs}    Best depth: {hero.best_depth}",
+                        (panel.right - 30, panel.y + 30), size=16,
                         color=theme.TEXT_DIM, right=True)
-        theme.draw_bar(surface, pygame.Rect(panel.x + 30, panel.y + 64, panel.width - 60, 16),
-                       solved / max(1, total), fill=theme.GREEN)
 
-        y = panel.y + 110
-        for puzzle in PUZZLES:
-            done = puzzle.id in hero.solved
-            unlocked = puzzle.id in hero.unlocked
-            color = theme.GREEN if done else (theme.TEXT if unlocked else theme.TEXT_MUTED)
-            mark = "[x]" if done else ("[ ]" if unlocked else "[ ]")
-            theme.draw_text(surface, f"{mark}  {puzzle.name}", (panel.x + 30, y),
-                            size=18, color=color)
-            theme.draw_text(surface, puzzle.stars, (panel.right - 30, y), size=16,
-                            color=theme.GOLD if unlocked else theme.TEXT_MUTED, right=True)
+        theme.draw_text(surface, "Spells whose chess trial you solved on the first "
+                                 "try. These can be learned without the test.",
+                        (panel.x + 30, panel.y + 64), size=15, color=theme.TEXT_DIM,
+                        wrap_width=panel.width - 60)
+
+        y = panel.y + 120
+        if not hero.learned_tactics:
+            theme.draw_text(surface, "None yet - reach a sanctuary and solve its "
+                                     "puzzle first try.", (panel.x + 30, y),
+                            size=17, color=theme.TEXT_MUTED)
+        for sid in hero.learned_tactics:
+            spell = SPELL_LIBRARY.get(sid)
+            if spell is None:
+                continue
+            theme.draw_text(surface, f"[x]  {spell.name}", (panel.x + 30, y),
+                            size=18, color=theme.GREEN)
+            theme.draw_text(surface, spell.kind.value, (panel.right - 30, y), size=15,
+                            color=theme.TEXT_DIM, right=True)
             y += 34
 
         super().draw(surface)

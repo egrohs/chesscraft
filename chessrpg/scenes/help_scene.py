@@ -9,15 +9,21 @@ from ..scene import Scene
 from ..ui import Button, Label
 
 LINES = [
-    ("Objective", "Each trial is a tactical puzzle. You play the side to move "
-                  "and must find the winning line."),
-    ("Moving", "Click a piece to see its legal moves, then click a highlighted "
-               "square. You can also drag and drop."),
-    ("Feedback", "A wrong move flashes red and costs you reward. Correct moves "
-                 "advance the scripted line."),
-    ("Hints", "Stuck? Spend gold on a hint to highlight the next correct move."),
-    ("Progression", "Solving trials earns XP and gold. Levelling up raises your "
-                    "stats and unlocks the next chapter."),
+    ("Objective", "You are a mage crossing a battlefield. Slay the enemy king "
+                  "at the far side by finding a clear line of fire."),
+    ("Turns", "Each turn you take one action - move one cell or cast a spell - "
+              "then every enemy acts. Press Space to end your turn."),
+    ("Enemies", "They move like chess pieces: pawns march forward, rooks sweep "
+                "ranks and files, bishops hold diagonals, knights leap in an L. "
+                "Red cells show where they can strike."),
+    ("Spells", "Press 1-9 or click a spell to ready it, then click a target. "
+               "Bolt flies straight, Blink teleports, Blast hits an area, "
+               "Aegis shields you. Each has range, cooldown and rules."),
+    ("Sanctuary", "Step on a glowing shrine to learn a new spell. Pick one of "
+                  "three, then solve its chess puzzle to master it."),
+    ("Roguelike", "Each descent is a fresh, harder battlefield. Death ends the "
+                  "run - but tactics you solve on the first try are remembered "
+                  "and can be learned without the trial next time."),
 ]
 
 
@@ -38,16 +44,16 @@ class HelpScene(Scene):
 
     def draw(self, surface: pygame.Surface) -> None:
         surface.blit(self._bg, (0, 0))
-        panel = pygame.Rect(40, 110, config.WINDOW_WIDTH - 80, config.WINDOW_HEIGHT - 160)
+        panel = pygame.Rect(40, 100, config.WINDOW_WIDTH - 80, config.WINDOW_HEIGHT - 140)
         theme.draw_panel(surface, panel, fill=theme.BG_PANEL, border=theme.GOLD_DARK, radius=14)
 
-        y = panel.y + 30
+        y = panel.y + 24
         for title, body in LINES:
-            theme.draw_text(surface, title, (panel.x + 40, y), size=24,
+            theme.draw_text(surface, title, (panel.x + 40, y), size=22,
                             color=theme.GOLD, bold=True)
-            theme.draw_text(surface, body, (panel.x + 40, y + 32), size=18,
-                            color=theme.TEXT, wrap_width=panel.width - 80)
-            y += 96
+            rect = theme.draw_text(surface, body, (panel.x + 40, y + 30), size=17,
+                                   color=theme.TEXT, wrap_width=panel.width - 80)
+            y = rect.bottom + 18
 
         super().draw(surface)
         surface.blit(theme.vignette((config.WINDOW_WIDTH, config.WINDOW_HEIGHT)), (0, 0))

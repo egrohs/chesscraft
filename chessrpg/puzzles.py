@@ -174,8 +174,97 @@ PUZZLES: list[Puzzle] = [
 ]
 
 
+# --------------------------------------------------------------------------
+# Sanctuary puzzles: one per tactical theme, used to unlock spells.
+#
+# Each spell is tied to a chess tactic. When the mage reaches a sanctuary the
+# game offers three spells; the player picks one and must solve its themed
+# puzzle to learn it. Solving it on the first try permanently records the
+# tactic in the profile so future runs can learn that spell without the test.
+# --------------------------------------------------------------------------
+
+THEMED_PUZZLES: dict[str, Puzzle] = {
+    # Straight-line attack -> the rook's open file.
+    "line": Puzzle(
+        id="t_line", name="The Open File",
+        fen="6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
+        solution=["a1a8"], goal="mate", difficulty=1,
+        briefing="A rook owns the file it stands on. Clear the back rank.",
+        hint="Slide the rook to the eighth rank - the king has no escape.",
+    ),
+    # Repositioning -> the king's quiet step.
+    "reposition": Puzzle(
+        id="t_reposition", name="The Quiet Step",
+        fen="8/8/8/4k3/8/8/4P3/4K3 w - - 0 1",
+        solution=["e1d2"], goal="win", difficulty=1,
+        briefing="Sometimes the best move is a small step to a better square.",
+        hint="Step the king toward the centre to support the pawn.",
+    ),
+    # Area control -> the bishop's diagonal sweep.
+    "area": Puzzle(
+        id="t_area", name="The Long Diagonal",
+        fen="6k1/5ppp/8/8/8/8/5PPP/2B3K1 w - - 0 1",
+        solution=["c1a3"], goal="win", difficulty=2,
+        briefing="A bishop commands a whole diagonal. Find the active square.",
+        hint="Swing the bishop to a3 to eye the long diagonal.",
+    ),
+    # Defence -> the shield of a solid structure.
+    "defence": Puzzle(
+        id="t_defence", name="The Fortress",
+        fen="6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1",
+        solution=["d1d8"], goal="mate", difficulty=1,
+        briefing="A solid back rank is a shield. Break through it.",
+        hint="The eighth rank is empty - deliver the back-rank mate.",
+    ),
+    # Piercing -> the knight leaps over everything.
+    "pierce": Puzzle(
+        id="t_pierce", name="The Leaping Knight",
+        fen="6rk/6pp/8/6N1/8/8/8/6K1 w - - 0 1",
+        solution=["g5f7"], goal="mate", difficulty=3,
+        briefing="A knight ignores the pieces in its way. Leap to the kill.",
+        hint="A knight check the king cannot escape - and nothing can take it.",
+    ),
+    # Reflection -> the discovered attack.
+    "reflect": Puzzle(
+        id="t_reflect", name="The Discovered Line",
+        fen="r3k2r/ppp2ppp/8/3N4/8/8/PPP2PPP/R3K2R w KQkq - 0 1",
+        solution=["d5c7", "e8d7", "c7a8"], goal="win", difficulty=2,
+        briefing="A fork bounces your attack between two targets at once.",
+        hint="Find the square where the knight checks the king and hits a rook.",
+    ),
+    # Domination -> the pin that freezes a piece.
+    "charm": Puzzle(
+        id="t_charm", name="The Pin",
+        fen="r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 0 1",
+        solution=["c4f7", "e8f7", "f3g5"], goal="win", difficulty=4,
+        briefing="A pinned piece cannot move. Sacrifice to drag the king out.",
+        hint="Sacrifice the bishop on f7, then fork king and queen with the knight.",
+    ),
+}
+
+# Spell id -> tactical theme key.
+SPELL_THEME = {
+    "bolt": "line",
+    "teleport": "reposition",
+    "blast": "area",
+    "shield": "defence",
+    "pierce": "pierce",
+    "reflect": "reflect",
+    "charm": "charm",
+}
+
+
+def themed_puzzle_for(spell_id: str) -> Puzzle | None:
+    """Return the chess puzzle that teaches ``spell_id``."""
+    theme = SPELL_THEME.get(spell_id)
+    return THEMED_PUZZLES.get(theme) if theme else None
+
+
 def get_puzzle(puzzle_id: str) -> Puzzle | None:
     for p in PUZZLES:
+        if p.id == puzzle_id:
+            return p
+    for p in THEMED_PUZZLES.values():
         if p.id == puzzle_id:
             return p
     return None

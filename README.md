@@ -1,21 +1,48 @@
-# Chess RPG - Tactical Trials
+# Arcane Descent
 
-A chess **simulation RPG** for PC inspired by *Master of Chess*, built with
-**pygame-ce** and **python-chess**. Instead of playing full games, you advance
-through a campaign of **tactical puzzles**, earning XP and gold and levelling
-up your hero.
+A **tactical roguelike** for PC inspired by *Hoplite*, with a dark-fantasy
+theme. You play a mage crossing a grid battlefield to reach a line of fire on
+the enemy king at the far side. Every turn is a chess-like decision: read the
+threats, position yourself, and find the angle to strike. Built with
+**pygame-ce** and **python-chess**.
+
+## The loop
+
+1. **Cross the battlefield.** Move one cell or cast one spell per turn, then
+   every enemy acts. Reach a position with a clear line to the enemy king.
+2. **Slay the king.** The king is walled off at the top of the field, guarded
+   by chess-inspired enemies. Create an opening and land a spell.
+3. **Descend.** When the king falls, the pieces fade and you take the stairs to
+   a deeper, harder level. Spells and health carry over.
+4. **Learn at sanctuaries.** Step on a glowing shrine to choose one of three
+   new spells, then solve a themed chess puzzle to master it.
+5. **Death ends the run** - but tactics you solve on the first try are
+   remembered forever and can be learned without the trial next time.
 
 ## Features
 
-- **Dark-fantasy RPG interface** - animated main menu, chapter map, hero sheet.
-- **Standard chess pieces** - classic Unicode piece glyphs by default, with an
-  optional painted-token style cropped from the illustrations in `art/`
-  (see `chessrpg/assets.py` and `config.PIECE_STYLE`).
-- **Full chess rules** - powered by `python-chess`, so every move is legal.
-- **Tactical puzzles** - find the winning line; wrong moves cost reward.
-- **RPG progression** - XP, levels, gold, stats and a persistent save file.
-- **Hints** - spend gold to reveal the next correct move.
-- **Click or drag** to move pieces, with legal-move dots and capture rings.
+- **Turn-based tactical combat** on a procedurally generated grid with walls,
+  pillars, rubble, sanctuaries and stairs.
+- **Chess-piece enemies** with predictable patterns: pawns march forward,
+  rooks sweep ranks and files, bishops hold diagonals, knights leap in an L,
+  and the king strikes in all eight directions. Red cells show every threat.
+- **Line of sight and cover** - walls and pillars block sight and movement;
+  rubble blocks movement but not sight.
+- **Seven spells** with clear rules (range, area, cooldown, line of sight):
+  - **Arcane Bolt** - straight-line projectile.
+  - **Blink** - teleport to a visible cell.
+  - **Arcane Blast** - area explosion.
+  - **Aegis** - absorb the next hit.
+  - **Phase Lance** - bolt that ignores walls.
+  - **Ricochet** - bolt that bounces off the first wall.
+  - **Dominate** - turn an enemy into a temporary ally.
+- **Sanctuary puzzles** - each spell is taught by a themed chess tactic
+  (open file, long diagonal, fork, pin, smothered mate...). Solve it to learn
+  the spell; a wrong move resets the trial and costs a little life.
+- **Roguelike progression** - fresh layouts each run, growing difficulty,
+  persistent meta-progression of mastered tactics.
+- **Clean dark-fantasy UI** - reachable cells, spell targets, threatened cells,
+  HP, cooldowns, turn counter and a combat chronicle.
 
 ## Requirements
 
@@ -35,26 +62,29 @@ python main.py
 
 ## Controls
 
-| Action            | Input                                  |
-| ----------------- | -------------------------------------- |
-| Select / move     | Left click a piece, then a target square |
-| Drag and drop     | Press and drag a piece                 |
-| Cancel selection  | Right click or click empty space       |
-| Back to menu      | `Esc`                                  |
+| Action            | Input                                      |
+| ----------------- | ------------------------------------------ |
+| Move              | Click a highlighted reachable cell         |
+| Select a spell    | Click its card or press `1`-`9`            |
+| Cast a spell      | With a spell ready, click a highlighted target |
+| End turn          | `Space` or the **End Turn** button         |
+| Back to move mode | `Tab` or right click                       |
+| Abandon run       | `Esc` or the back button                   |
 
-## Piece style
+## Spells and their teaching puzzles
 
-Pieces are drawn as the **standard chess glyphs** (king, queen, rook, bishop,
-knight, pawn) by default. Change the style in `chessrpg/config.py`:
+Each spell is tied to a chess tactic. At a sanctuary you pick one of three
+offered spells and must solve its puzzle to learn it.
 
-```python
-PIECE_STYLE = "standard"   # classic Unicode chess pieces (default)
-PIECE_STYLE = "art"        # painted character tokens from the art/ folder
-```
-
-The `"art"` style crops each illustration in `art/` into a circular character
-token; the `"standard"` style renders crisp glyphs with a contrasting outline
-so they stay legible on both light and dark squares.
+| Spell        | Tactic theme        | Puzzle              |
+| ------------ | ------------------- | ------------------- |
+| Arcane Bolt  | The open file       | `t_line`            |
+| Blink        | The quiet step      | `t_reposition`      |
+| Arcane Blast | The long diagonal   | `t_area`            |
+| Aegis        | The fortress        | `t_defence`         |
+| Phase Lance  | The leaping knight  | `t_pierce`          |
+| Ricochet     | The discovered line | `t_reflect`         |
+| Dominate     | The pin             | `t_charm`           |
 
 ## Project layout
 
@@ -65,54 +95,40 @@ chessrpg/
   theme.py                  palette, fonts, drawing helpers
   assets.py                 standard glyph pieces + art-token extraction
   ui.py                     buttons, labels, bars, tooltips
-  board.py                  board rendering and mouse input
+  board.py                  chess board renderer (used by the sanctuary)
+  combat.py                 battlefield, spells, LOS, enemy AI, turn loop
+  run.py                    level generation + roguelike run state
+  puzzles.py                puzzle library + themed sanctuary puzzles
   scene.py                  scene base class + fade transitions
-  rpg.py                    hero stats, XP and save profile
-  puzzles.py                puzzle library + solution validation
+  rpg.py                    hero stats, tactics and save profile
   game.py                   window, main loop, scene wiring
   scenes/
     menu.py                 main menu
-    level_select.py         chapter map
-    puzzle_scene.py         gameplay + HUD + result overlay
-    hero_scene.py           character sheet
+    combat_scene.py         battlefield, HUD, spell bar, turn flow
+    sanctuary_scene.py      spell choice + chess puzzle
+    hero_scene.py           character sheet and mastered tactics
     help_scene.py           how to play
 tools/
-  smoke_test.py             headless test of puzzles and every scene
+  smoke_test.py             headless test of rules, generation and scenes
   verify_puzzles.py         prints each puzzle's solution in SAN
   screenshots.py            renders each scene to tools/shots/*.png
 ```
 
-## Adding a puzzle
+## Adding a spell
 
-Append a `Puzzle` to `PUZZLES` in `chessrpg/puzzles.py`:
-
-```python
-Puzzle(
-    id="p9",
-    name="My Puzzle",
-    fen="6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
-    solution=["a1a8"],          # UCI moves, player and opponent alternating
-    goal="mate",
-    difficulty=2,
-    xp=60, gold=30,
-    chapter="Chapter II - The Rook's Gambit",
-    briefing="...",
-    hint="...",
-)
-```
-
-Then validate it:
-
-```bash
-python tools/verify_puzzles.py
-```
+1. Add a `Spell` to `SPELL_LIBRARY` in `chessrpg/combat.py`.
+2. Add its tactical theme to `SPELL_THEME` and a `Puzzle` to `THEMED_PUZZLES`
+   in `chessrpg/puzzles.py`.
+3. Handle its `SpellKind` in `cast_spell` and `_target_ok` (combat scene).
 
 ## Testing
 
 ```bash
-python tools/smoke_test.py     # boots the game headless and drives every scene
+python tools/smoke_test.py     # rules, generation, run flow and every scene
 python tools/screenshots.py    # writes PNGs of each scene to tools/shots/
 ```
 
-The smoke test checks that every puzzle's solution is legal and playable, that
-all scenes render, and that solving / wrong-move / hint flows behave correctly.
+The smoke test checks that every spell has a valid teaching puzzle, that the
+combat rules (bolt, pierce, blast, teleport, shield, charm, threat map) behave
+correctly, that generated levels are solvable with a reachable sanctuary, that
+the run flow carries spells across descents, and that every scene renders.

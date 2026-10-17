@@ -29,6 +29,12 @@ class Hero:
     solved: list = field(default_factory=list)   # puzzle ids
     unlocked: list = field(default_factory=lambda: ["p1"])
 
+    # Roguelike meta-progression: spells whose chess tactic was solved on the
+    # first try. These can be learned without the trial in future runs.
+    learned_tactics: list = field(default_factory=list)
+    best_depth: int = 0
+    runs: int = 0
+
     @property
     def xp_to_next(self) -> int:
         return 100 + (self.level - 1) * 60

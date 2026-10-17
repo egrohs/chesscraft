@@ -1,4 +1,4 @@
-"""Headless smoke test: boots the game, drives every scene, checks puzzles.
+"""Headless smoke test: boots the game, drives every scene, checks the loop.
 
 Run with:  python tools/smoke_test.py
 Uses the dummy SDL video driver so it works without a display.
@@ -18,34 +18,161 @@ import chess  # noqa: E402
 import pygame  # noqa: E402
 
 from chessrpg import config  # noqa: E402
+from chessrpg.combat import (  # noqa: E402
+    Battlefield,
+    Enemy,
+    EnemyKind,
+    Mage,
+    Outcome,
+    SPELL_LIBRARY,
+    SpellKind,
+    Tile,
+    cast_spell,
+    end_player_turn,
+    threatened_cells,
+)
 from chessrpg.game import Game  # noqa: E402
-from chessrpg.puzzles import PUZZLES, PuzzleSession  # noqa: E402
+from chessrpg.puzzles import THEMED_PUZZLES, PuzzleSession, themed_puzzle_for  # noqa: E402
+from chessrpg.run import Run, generate_level, spell_offers  # noqa: E402
 
 
-def check_puzzles() -> None:
-    """Every puzzle must be legal and its solution must be playable."""
-    for puzzle in PUZZLES:
+# --------------------------------------------------------------------------
+# Logic tests
+# --------------------------------------------------------------------------
+def check_themed_puzzles() -> None:
+    for key, puzzle in THEMED_PUZZLES.items():
         session = PuzzleSession(puzzle)
         for i, uci in enumerate(puzzle.solution):
             if i % 2 == 0:
-                # Player move: must be legal and accepted by the session.
                 move = chess.Move.from_uci(uci)
-                assert move in session.board.legal_moves, (
-                    f"{puzzle.id}: illegal player move {uci} at step {i}"
-                )
+                assert move in session.board.legal_moves, f"{puzzle.id}: illegal {uci}"
                 result = session.try_move(move)
                 assert result in ("correct", "solved"), f"{puzzle.id}: {result}"
             else:
-                # Opponent replies are applied inside try_move; just confirm
-                # the session advanced past them.
-                assert session.step > i, f"{puzzle.id}: opponent reply {uci} not applied"
-        assert session.solved, f"{puzzle.id}: solution did not finish the puzzle"
-        print(f"  ok  {puzzle.id:<4} {puzzle.name:<22} {len(puzzle.solution)} plies")
+                assert session.step > i, f"{puzzle.id}: reply {uci} not applied"
+        assert session.solved, f"{puzzle.id}: not solved"
+        print(f"  ok  themed puzzle {key:<12} {puzzle.id}")
 
 
+def check_spell_themes() -> None:
+    for sid in SPELL_LIBRARY:
+        assert themed_puzzle_for(sid) is not None, f"{sid} has no teaching puzzle"
+    print("  ok  every spell has a teaching puzzle")
+
+
+def _open_field(width=9, height=9) -> Battlefield:
+    tiles = [[Tile.FLOOR for _ in range(width)] for _ in range(height)]
+    for x in range(width):
+        tiles[0][x] = Tile.WALL
+        tiles[height - 1][x] = Tile.WALL
+    for y in range(height):
+        tiles[y][0] = Tile.WALL
+        tiles[y][width - 1] = Tile.WALL
+    bf = Battlefield(width, height, tiles)
+    bf.mage = Mage(pos=(4, 7))
+    return bf
+
+
+def check_combat_rules() -> None:
+    # Bolt hits the first enemy in a straight line.
+    bf = _open_field()
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(4, 4), hp=2, max_hp=2))
+    res = cast_spell(bf, SPELL_LIBRARY["bolt"], (4, 4))
+    assert res.ok and res.killed, "bolt should kill a 2hp pawn with 2 damage"
+    assert bf.enemy_at((4, 4)) is None
+    print("  ok  bolt kills first enemy in line")
+
+    # Bolt blocked by a wall.
+    bf = _open_field()
+    bf.tiles[5][4] = Tile.WALL
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(4, 3), hp=2, max_hp=2))
+    res = cast_spell(bf, SPELL_LIBRARY["bolt"], (4, 3))
+    assert not res.ok, "bolt should be blocked by a wall"
+    print("  ok  bolt blocked by wall")
+
+    # Pierce ignores walls.
+    bf = _open_field()
+    bf.tiles[5][4] = Tile.WALL
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(4, 3), hp=2, max_hp=2))
+    res = cast_spell(bf, SPELL_LIBRARY["pierce"], (4, 3))
+    assert res.ok and res.killed, "pierce should ignore the wall"
+    print("  ok  pierce ignores walls")
+
+    # Blast hits an area.
+    bf = _open_field()
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(4, 4), hp=2, max_hp=2))
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(5, 4), hp=2, max_hp=2))
+    res = cast_spell(bf, SPELL_LIBRARY["blast"], (4, 4))
+    assert res.ok and len(res.killed) == 2, "blast should hit both adjacent enemies"
+    print("  ok  blast hits area")
+
+    # Teleport moves the mage.
+    bf = _open_field()
+    res = cast_spell(bf, SPELL_LIBRARY["teleport"], (4, 3))
+    assert res.ok and bf.mage.pos == (4, 3)
+    print("  ok  teleport moves mage")
+
+    # Shield absorbs a hit.
+    bf = _open_field()
+    bf.mage.pos = (4, 4)
+    bf.enemies.append(Enemy(kind=EnemyKind.ROOK, pos=(4, 2), hp=3, max_hp=3))
+    cast_spell(bf, SPELL_LIBRARY["shield"], (4, 4))
+    hp_before = bf.mage.hp
+    end_player_turn(bf, __import__("random").Random(0))
+    assert bf.mage.hp == hp_before, "shield should absorb the hit"
+    print("  ok  shield absorbs a hit")
+
+    # Charm converts an enemy.
+    bf = _open_field()
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(4, 5), hp=2, max_hp=2))
+    res = cast_spell(bf, SPELL_LIBRARY["charm"], (4, 5))
+    assert res.ok and bf.enemy_at((4, 5)).charmed
+    print("  ok  charm converts enemy")
+
+    # Threat map reflects chess patterns.
+    bf = _open_field()
+    bf.enemies.append(Enemy(kind=EnemyKind.ROOK, pos=(4, 4), hp=3, max_hp=3))
+    threats = threatened_cells(bf)
+    assert (4, 1) in threats and (1, 4) in threats, "rook should threaten its rank/file"
+    assert (5, 5) not in threats, "rook should not threaten diagonals"
+    print("  ok  threat map matches chess patterns")
+
+
+def check_level_generation() -> None:
+    for depth in range(1, 6):
+        level = generate_level(depth, seed=depth * 7)
+        bf = level.battlefield
+        assert bf.king() is not None, f"depth {depth}: no king"
+        assert bf.mage is not None, f"depth {depth}: no mage"
+        assert level.sanctuary_pos is not None, f"depth {depth}: no sanctuary"
+        # The mage must be able to reach the sanctuary.
+        reach = bf.reachable(bf.mage.pos, 40)
+        assert level.sanctuary_pos in reach, f"depth {depth}: sanctuary unreachable"
+        print(f"  ok  depth {depth}: {bf.width}x{bf.height}, "
+              f"{len(bf.living_enemies())} enemies, sanctuary reachable")
+
+
+def check_run_flow() -> None:
+    run = Run(seed=1234)
+    run.start()
+    assert run.depth == 1 and run.level is not None
+    offers = spell_offers(run, run.rng, 3)
+    assert len(offers) == 3, "should offer three spells"
+    run.learn_spell(offers[0])
+    assert offers[0] in run.mage.spells
+    run.descend()
+    assert run.depth == 2 and run.levels_cleared == 1
+    # Learned spell carries over.
+    assert offers[0] in run.mage.spells, "learned spell should persist across levels"
+    print("  ok  run flow: offers, learning, descent, carry-over")
+
+
+# --------------------------------------------------------------------------
+# Scene tests
+# --------------------------------------------------------------------------
 def drive_scene(game: Game, name: str, frames: int = 8, **kwargs) -> None:
     game.scenes_mgr.switch(name, **kwargs)
-    for _ in range(30):  # let the fade finish
+    for _ in range(30):
         game.scenes_mgr.update(1 / 60)
     for _ in range(frames):
         game.scenes_mgr.update(1 / 60)
@@ -54,47 +181,69 @@ def drive_scene(game: Game, name: str, frames: int = 8, **kwargs) -> None:
     print(f"  ok  scene '{name}' rendered")
 
 
+def check_scenes(game: Game) -> None:
+    drive_scene(game, "menu")
+    drive_scene(game, "hero")
+    drive_scene(game, "help")
+
+    run = Run(seed=99)
+    run.start()
+    drive_scene(game, "combat", run=run)
+
+    # Move the mage one step and end the turn.
+    scene = game.scenes["combat"]
+    scene.on_enter(run=run)
+    mage = scene.bf.mage
+    start = mage.pos
+    if scene.reachable:
+        target = next(iter(scene.reachable))
+        scene._on_cell_click(target)
+        assert mage.pos == target, "mage should move to a reachable cell"
+    print("  ok  combat: mage moved")
+
+    # Cast a bolt at an enemy if one is in line.
+    scene._select_spell("bolt")
+    assert scene.mode == "bolt"
+    print("  ok  combat: spell selected")
+
+    # Sanctuary scene.
+    drive_scene(game, "sanctuary", run=run)
+    sanc = game.scenes["sanctuary"]
+    sanc.on_enter(run=run)
+    assert len(sanc.offers) == 3
+    sanc._choose(sanc.offers[0])
+    assert sanc.phase == "puzzle"
+    print("  ok  sanctuary: chose a spell, puzzle opened")
+
+    # Solve the sanctuary puzzle through the board.
+    puzzle = sanc.session.puzzle
+    for i, uci in enumerate(puzzle.solution):
+        if i % 2 == 0:
+            mv = chess.Move.from_uci(uci)
+            sanc._handle_board_action(("move", mv.from_square, mv.to_square))
+    assert sanc.phase == "learned", "solving the puzzle should teach the spell"
+    print("  ok  sanctuary: puzzle solved, spell learned")
+
+
 def main() -> int:
-    print("Checking puzzle library...")
-    check_puzzles()
+    print("Checking themed puzzles...")
+    check_themed_puzzles()
+    check_spell_themes()
+
+    print("Checking combat rules...")
+    check_combat_rules()
+
+    print("Checking level generation...")
+    check_level_generation()
+
+    print("Checking run flow...")
+    check_run_flow()
 
     print("Booting game...")
     game = Game()
 
     print("Driving scenes...")
-    drive_scene(game, "menu")
-    drive_scene(game, "level_select")
-    drive_scene(game, "hero")
-    drive_scene(game, "help")
-    drive_scene(game, "puzzle", puzzle_id="p1")
-
-    # Simulate solving p1 through the scene's board interaction.
-    scene = game.scenes["puzzle"]
-    scene.on_enter(puzzle_id="p1")
-    src = chess.A1
-    dst = chess.A8
-    scene._handle_board_action(("move", src, dst))
-    assert scene._result == "victory", "p1 should be solved by Ra8#"
-    print("  ok  solved p1 through the scene, result overlay shown")
-
-    # Render the result overlay.
-    for _ in range(5):
-        game.scenes_mgr.update(1 / 60)
-        game.scenes_mgr.draw(game.screen)
-    print("  ok  result overlay rendered")
-
-    # Wrong move path
-    scene.on_enter(puzzle_id="p2")
-    scene._handle_board_action(("move", chess.A2, chess.A3))
-    assert scene.session.mistakes == 1, "wrong move should count a mistake"
-    print("  ok  wrong move counted")
-
-    # Hint path
-    gold_before = game.profile.hero.gold
-    scene._on_hint()
-    assert game.profile.hero.gold == gold_before - config.HINT_COST
-    assert scene.board_view.hint_move is not None
-    print("  ok  hint consumed gold and highlighted a move")
+    check_scenes(game)
 
     pygame.quit()
     print("\nAll smoke tests passed.")
