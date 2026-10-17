@@ -201,6 +201,24 @@ def check_scenes(game: Game) -> None:
         assert mage.pos == target, "mage should move to a reachable cell"
     print("  ok  combat: mage moved")
 
+    # The sanctuary may only be visited once per level.
+    sanc_pos = run.level.sanctuary_pos
+    assert sanc_pos is not None
+    scene.reachable = {sanc_pos}
+    scene._on_cell_click(sanc_pos)
+    assert run.level.sanctuary_used, "entering the sanctuary should mark it used"
+    assert game.scenes_mgr._next and game.scenes_mgr._next[0] == "sanctuary", \
+        "first visit opens the shrine"
+    game.scenes_mgr._next = None
+    scene.on_enter(run=run)
+    scene.reachable = {sanc_pos}
+    scene._on_cell_click(sanc_pos)
+    assert not (game.scenes_mgr._next and game.scenes_mgr._next[0] == "sanctuary"), \
+        "second visit must not reopen the shrine"
+    print("  ok  combat: sanctuary visitable only once per level")
+
+
+
     # Cast a bolt at an enemy if one is in line.
     scene._select_spell("bolt")
     assert scene.mode == "bolt"

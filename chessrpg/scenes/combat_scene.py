@@ -15,6 +15,7 @@ from typing import Optional
 import pygame
 
 from .. import config, theme
+from ..assets import ASSETS
 from ..combat import (
     Battlefield,
     CastResult,
@@ -40,9 +41,12 @@ from ..ui import Button, IconButton
 # --------------------------------------------------------------------------
 FLOOR_A = (46, 50, 66)
 FLOOR_B = (38, 42, 56)
-WALL_COL = (24, 26, 36)
-PILLAR_COL = (58, 54, 74)
-RUBBLE_COL = (70, 62, 52)
+WALL_COL = (92, 98, 122)
+WALL_EDGE = (150, 160, 190)
+PILLAR_COL = (108, 100, 138)
+PILLAR_EDGE = (168, 158, 200)
+RUBBLE_COL = (120, 104, 82)
+RUBBLE_EDGE = (176, 152, 116)
 SANCTUARY_COL = (86, 132, 150)
 STAIRS_COL = (120, 104, 70)
 
@@ -63,12 +67,13 @@ ENEMY_COLORS = {
     EnemyKind.KING: KING_COL,
 }
 
-ENEMY_GLYPHS = {
-    EnemyKind.PAWN: "\u265F",
-    EnemyKind.ROOK: "\u265C",
-    EnemyKind.BISHOP: "\u265D",
-    EnemyKind.KNIGHT: "\u265E",
-    EnemyKind.KING: "\u265A",
+# Map each enemy to the chess piece it is drawn as.
+ENEMY_PIECES = {
+    EnemyKind.PAWN: "pawn",
+    EnemyKind.ROOK: "rook",
+    EnemyKind.BISHOP: "bishop",
+    EnemyKind.KNIGHT: "knight",
+    EnemyKind.KING: "king",
 }
 
 
@@ -297,8 +302,11 @@ class CombatScene(Scene):
         if self.mode == "move":
             if cell in self.reachable:
                 mage.pos = cell
-                # Entering a sanctuary opens the spell-learning shrine.
-                if self.bf.tile(cell) == Tile.SANCTUARY:
+                # Entering a sanctuary opens the spell-learning shrine, but only
+                # once per level.
+                if (self.bf.tile(cell) == Tile.SANCTUARY
+                        and not self.run.level.sanctuary_used):
+                    self.run.level.sanctuary_used = True
                     self.game.scenes_mgr.switch("sanctuary", run=self.run)
                     return
                 self._after_player_action()
@@ -438,22 +446,30 @@ class CombatScene(Scene):
                 r = self.cell_rect(p).move(shake)
                 tile = self.bf.tile(p)
                 if tile == Tile.WALL:
-                    col = WALL_COL
+                    col, edge = WALL_COL, WALL_EDGE
                 elif tile == Tile.PILLAR:
-                    col = PILLAR_COL
+                    col, edge = PILLAR_COL, PILLAR_EDGE
                 elif tile == Tile.RUBBLE:
-                    col = RUBBLE_COL
+                    col, edge = RUBBLE_COL, RUBBLE_EDGE
                 elif tile == Tile.SANCTUARY:
-                    col = SANCTUARY_COL
+                    col, edge = SANCTUARY_COL, None
                 elif tile == Tile.STAIRS:
-                    col = STAIRS_COL
+                    col, edge = STAIRS_COL, None
                 else:
                     col = FLOOR_A if (x + y) % 2 == 0 else FLOOR_B
+                    edge = None
                 pygame.draw.rect(surface, col, r)
-                pygame.draw.rect(surface, (0, 0, 0, 40), r, 1)
+
+                if edge is not None:
+                    # Impassable terrain: raised bevel + bright outline so it
+                    # reads instantly as "you cannot walk here".
+                    self._draw_bevel(surface, r, edge)
+                else:
+                    pygame.draw.rect(surface, (0, 0, 0, 40), r, 1)
 
                 if tile == Tile.PILLAR:
                     pygame.draw.circle(surface, (78, 74, 96), r.center, self.cell // 3)
+                    pygame.draw.circle(surface, PILLAR_EDGE, r.center, self.cell // 3, 2)
                 elif tile == Tile.RUBBLE:
                     pygame.draw.circle(surface, (92, 82, 68), (r.x + self.cell // 3, r.centery), 5)
                     pygame.draw.circle(surface, (92, 82, 68), (r.right - self.cell // 3, r.centery), 4)
@@ -462,7 +478,24 @@ class CombatScene(Scene):
                 elif tile == Tile.STAIRS:
                     self._draw_stairs(surface, r)
 
+    def _draw_bevel(self, surface, r, edge) -> None:
+        """Raised-block look: light top/left, dark bottom/right, bright rim."""
+        light = tuple(min(255, c + 40) for c in edge)
+        dark = tuple(max(0, c - 60) for c in edge)
+        t = max(2, self.cell // 14)
+        pygame.draw.line(surface, light, r.topleft, r.topright, t)
+        pygame.draw.line(surface, light, r.topleft, r.bottomleft, t)
+        pygame.draw.line(surface, dark, r.bottomleft, r.bottomright, t)
+        pygame.draw.line(surface, dark, r.topright, r.bottomright, t)
+        pygame.draw.rect(surface, edge, r, 2)
+
     def _draw_sanctuary(self, surface, r) -> None:
+        used = self.run is not None and self.run.level is not None and self.run.level.sanctuary_used
+        if used:
+            # Spent shrine: dim, no pulse.
+            pygame.draw.circle(surface, (120, 130, 140), r.center, self.cell // 4, 2)
+            pygame.draw.line(surface, (120, 130, 140), (r.centerx, r.y + 8), (r.centerx, r.bottom - 8), 2)
+            return
         pulse = 0.5 + 0.5 * math.sin(self._t * 3)
         glow = pygame.Surface(r.size, pygame.SRCALPHA)
         pygame.draw.circle(glow, (150, 220, 240, int(60 + 60 * pulse)), r.center, self.cell // 2 - 4)
@@ -528,17 +561,35 @@ class CombatScene(Scene):
             r = self.cell_rect(self.bf.mage.pos).move(shake)
             self._draw_mage(surface, r)
 
+    def _piece_surface(self, piece_type: str, size: int, color) -> pygame.Surface:
+        """Return a chess-piece sprite tinted to ``color``.
+
+        The base sprite comes from :data:`ASSETS`, which already resolves a
+        font that truly contains the chess glyphs (with a procedural fallback),
+        so enemies always read as real chess pieces.
+        """
+        base = ASSETS.standard_piece(piece_type, False, size).copy()
+        tint = pygame.Surface(base.get_size(), pygame.SRCALPHA)
+        tint.fill((*color, 255))
+        base.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+        return base
+
     def _draw_enemy(self, surface, e: Enemy, r) -> None:
         col = ENEMY_COLORS[e.kind]
         if e.charmed:
             col = (120, 200, 140)
         cx, cy = r.center
         radius = self.cell // 2 - 6
-        pygame.draw.circle(surface, (18, 18, 24), (cx, cy), radius)
-        pygame.draw.circle(surface, col, (cx, cy), radius, 3)
-        glyph = ENEMY_GLYPHS[e.kind]
-        theme.draw_text(surface, glyph, (cx, cy - 2), size=int(self.cell * 0.6),
-                        color=col, center=True)
+        # Soft disc so the piece reads against the floor, kept subtle so the
+        # chess piece itself is the dominant shape.
+        disc = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+        pygame.draw.circle(disc, (*col, 46), (radius, radius), radius)
+        surface.blit(disc, (cx - radius, cy - radius))
+        pygame.draw.circle(surface, col, (cx, cy), radius, 2)
+        # The chess piece is the enemy.
+        size = int(self.cell * 0.9)
+        piece = self._piece_surface(ENEMY_PIECES[e.kind], size, col)
+        surface.blit(piece, piece.get_rect(center=(cx, cy - 2)))
         # HP pips.
         if e.max_hp > 1:
             for i in range(e.max_hp):
@@ -559,8 +610,9 @@ class CombatScene(Scene):
             pygame.draw.circle(surface, (150, 220, 255), (cx, cy), radius + 4, 3)
         pygame.draw.circle(surface, (18, 18, 24), (cx, cy), radius)
         pygame.draw.circle(surface, MAGE_COL, (cx, cy), radius, 3)
-        theme.draw_text(surface, "\u265D", (cx, cy - 2), size=int(self.cell * 0.62),
-                        color=MAGE_CORE, center=True)
+        size = int(self.cell * 0.9)
+        piece = self._piece_surface("bishop", size, MAGE_CORE)
+        surface.blit(piece, piece.get_rect(center=(cx, cy - 2)))
 
     # ------------------------------------------------------------------
     # HUD

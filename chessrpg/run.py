@@ -52,6 +52,7 @@ class Level:
     sanctuary_pos: Optional[tuple[int, int]]
     stairs_pos: tuple[int, int]
     seed: int
+    sanctuary_used: bool = False
 
 
 # --------------------------------------------------------------------------
