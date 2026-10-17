@@ -138,6 +138,128 @@ def check_combat_rules() -> None:
     print("  ok  threat map matches chess patterns")
 
 
+def check_tactic_spells() -> None:
+    import random as _random
+
+    # Open Lines: shove an enemy one cell further along the line.
+    bf = _open_field()
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(4, 4), hp=2, max_hp=2))
+    res = cast_spell(bf, SPELL_LIBRARY["push"], (4, 4))
+    assert res.ok and bf.enemy_at((4, 3)) is not None, "push should shove the enemy back"
+    print("  ok  open lines shoves an enemy")
+
+    # Pawn Break: destroy a wall tile.
+    bf = _open_field()
+    bf.tiles[4][4] = Tile.WALL
+    res = cast_spell(bf, SPELL_LIBRARY["break"], (4, 4))
+    assert res.ok and bf.tile((4, 4)) == Tile.FLOOR, "break should open the wall"
+    print("  ok  pawn break opens a wall")
+
+    # Windmill: hits every enemy on the mage's rank and file.
+    bf = _open_field()
+    bf.mage.pos = (4, 4)
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(4, 2), hp=2, max_hp=2))
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(2, 4), hp=2, max_hp=2))
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(6, 6), hp=2, max_hp=2))
+    res = cast_spell(bf, SPELL_LIBRARY["cross"], (4, 4))
+    assert res.ok and len(res.killed) == 2, "windmill should kill the two on rank/file"
+    assert bf.enemy_at((6, 6)) is not None, "windmill should spare off-axis enemies"
+    print("  ok  windmill hits rank and file")
+
+    # Fork: strikes the target and a second adjacent enemy.
+    bf = _open_field()
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(4, 4), hp=2, max_hp=2))
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(5, 4), hp=2, max_hp=2))
+    res = cast_spell(bf, SPELL_LIBRARY["fork"], (4, 4))
+    assert res.ok and len(res.killed) == 2, "fork should hit two enemies"
+    print("  ok  fork strikes two enemies")
+
+    # Sacrifice: pay life for shield and refreshed cooldowns.
+    bf = _open_field()
+    bf.mage.cooldowns["bolt"] = 3
+    hp0 = bf.mage.hp
+    res = cast_spell(bf, SPELL_LIBRARY["sacrifice"], bf.mage.pos)
+    assert res.ok and bf.mage.hp == hp0 - 1 and bf.mage.shield == 2
+    assert bf.mage.cooldowns["bolt"] == 0, "sacrifice should refresh cooldowns"
+    print("  ok  sacrifice trades life for shield + tempo")
+
+    # Stalemate: flee to a cell not under threat.
+    bf = _open_field()
+    bf.mage.pos = (4, 4)
+    bf.enemies.append(Enemy(kind=EnemyKind.ROOK, pos=(4, 2), hp=3, max_hp=3))
+    res = cast_spell(bf, SPELL_LIBRARY["escape"], bf.mage.pos)
+    assert res.ok and bf.mage.pos != (4, 4), "escape should move the mage"
+    print("  ok  stalemate flees to safety")
+
+    # Deflection: nearby enemies become feared and flee.
+    bf = _open_field()
+    bf.mage.pos = (4, 4)
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(4, 5), hp=2, max_hp=2))
+    res = cast_spell(bf, SPELL_LIBRARY["fear"], bf.mage.pos)
+    assert res.ok and bf.enemy_at((4, 5)).feared, "deflection should fear the enemy"
+    print("  ok  deflection fears nearby enemies")
+
+    # Discovered Attack: damage + a free extra action.
+    bf = _open_field()
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(4, 4), hp=2, max_hp=2))
+    res = cast_spell(bf, SPELL_LIBRARY["discover"], (4, 4))
+    assert res.ok and bf.mage.extra_action, "discovered attack should grant an extra action"
+    print("  ok  discovered attack grants tempo")
+
+    # Pin: freeze an enemy so it cannot act.
+    bf = _open_field()
+    bf.mage.pos = (4, 4)
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(4, 5), hp=2, max_hp=2))
+    res = cast_spell(bf, SPELL_LIBRARY["pin"], (4, 5))
+    assert res.ok and bf.enemy_at((4, 5)).pinned, "pin should freeze the enemy"
+    pos_before = bf.enemy_at((4, 5)).pos
+    end_player_turn(bf, _random.Random(0))
+    assert bf.enemy_at(pos_before) is not None, "a pinned enemy must not move"
+    print("  ok  pin freezes an enemy")
+
+    # Minefield: a mine detonates only when an enemy steps on it.
+    bf = _open_field()
+    bf.mage.pos = (4, 7)
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(4, 5), hp=2, max_hp=2))
+    res = cast_spell(bf, SPELL_LIBRARY["mine"], (4, 6))
+    assert res.ok and (4, 6) in bf.mines, "mine should be laid"
+    end_player_turn(bf, _random.Random(0))
+    assert (4, 6) not in bf.mines, "the pawn should trigger the mine"
+    print("  ok  minefield detonates on an enemy")
+
+    # Triangulation: spend a turn for shield + cooldown reduction.
+    bf = _open_field()
+    bf.mage.cooldowns["bolt"] = 2
+    res = cast_spell(bf, SPELL_LIBRARY["tempo"], bf.mage.pos)
+    assert res.ok and bf.mage.shield == 1 and bf.mage.cooldowns["bolt"] == 1
+    print("  ok  triangulation trades tempo for advantage")
+
+    # Skewer: hits the enemy behind the first in line.
+    bf = _open_field()
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(4, 5), hp=2, max_hp=2))
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(4, 3), hp=2, max_hp=2))
+    res = cast_spell(bf, SPELL_LIBRARY["sniper"], (4, 3))
+    assert res.ok and bf.enemy_at((4, 3)) is None, "skewer should hit the rear enemy"
+    assert bf.enemy_at((4, 5)) is not None, "skewer should spare the front enemy"
+    print("  ok  skewer strikes the enemy behind")
+
+    # Interference: raise a wall that blocks sight.
+    bf = _open_field()
+    res = cast_spell(bf, SPELL_LIBRARY["wall"], (4, 5))
+    assert res.ok and (4, 5) in bf.temp_walls, "wall should be raised"
+    assert bf.blocks_sight((4, 5)), "the wall should block line of sight"
+    print("  ok  interference raises a sight wall")
+
+    # Clearance: sidestep, shoving an adjacent enemy aside.
+    bf = _open_field()
+    bf.mage.pos = (4, 4)
+    bf.enemies.append(Enemy(kind=EnemyKind.PAWN, pos=(4, 5), hp=2, max_hp=2))
+    res = cast_spell(bf, SPELL_LIBRARY["clearance"], (4, 5))
+    assert res.ok and bf.mage.pos == (4, 5), "clearance should move the mage in"
+    assert bf.enemy_at((4, 6)) is not None, "clearance should shove the enemy aside"
+    print("  ok  clearance sidesteps and shoves")
+
+
 def check_level_generation() -> None:
     for depth in range(1, 6):
         level = generate_level(depth, seed=depth * 7)
@@ -250,6 +372,9 @@ def main() -> int:
 
     print("Checking combat rules...")
     check_combat_rules()
+
+    print("Checking chess-tactic spells...")
+    check_tactic_spells()
 
     print("Checking level generation...")
     check_level_generation()

@@ -17,6 +17,7 @@ import pygame
 from .. import config, theme
 from ..assets import ASSETS
 from ..combat import (
+    BLOCKING_TILES,
     Battlefield,
     CastResult,
     Enemy,
@@ -190,7 +191,7 @@ class CombatScene(Scene):
         assert self.bf is not None and self.bf.mage is not None
         origin = self.bf.mage.pos
         out: set = set()
-        if spell.kind == SpellKind.SHIELD:
+        if spell.kind in (SpellKind.SHIELD, SpellKind.SACRIFICE, SpellKind.TEMPO):
             return {origin}
         for y in range(self.bf.height):
             for x in range(self.bf.width):
@@ -218,6 +219,33 @@ class CombatScene(Scene):
             return True
         if spell.kind == SpellKind.REFLECT:
             return p != origin
+        if spell.kind == SpellKind.PUSH:
+            e = self.bf.enemy_at(p)
+            return (e is not None and not e.is_king
+                    and self.bf.straight_line(origin, p) and self.bf.has_los(origin, p))
+        if spell.kind == SpellKind.BREAK:
+            return self.bf.tile(p) in BLOCKING_TILES
+        if spell.kind == SpellKind.CROSS:
+            return True  # hits the whole rank + file; any cell is a valid aim
+        if spell.kind == SpellKind.FORK:
+            return self.bf.enemy_at(p) is not None and self.bf.has_los(origin, p)
+        if spell.kind == SpellKind.ESCAPE:
+            return False  # self-cast; the target is chosen automatically
+        if spell.kind == SpellKind.FEAR:
+            return False  # self-centred; no target needed
+        if spell.kind == SpellKind.DISCOVER:
+            return self.bf.enemy_at(p) is not None and self.bf.has_los(origin, p)
+        if spell.kind == SpellKind.PIN:
+            e = self.bf.enemy_at(p)
+            return e is not None and not e.is_king and self.bf.has_los(origin, p)
+        if spell.kind == SpellKind.MINE:
+            return self.bf.is_walkable(p) and not self.bf.occupied(p)
+        if spell.kind == SpellKind.SNIPER:
+            return self.bf.straight_line(origin, p) and p != origin
+        if spell.kind == SpellKind.WALL:
+            return self.bf.is_walkable(p) and not self.bf.occupied(p)
+        if spell.kind == SpellKind.CLEARANCE:
+            return chebyshev(origin, p) == 1 and self.bf.tile(p) not in BLOCKING_TILES
         return False
 
     def _select_spell(self, spell_id: str) -> None:
@@ -285,15 +313,16 @@ class CombatScene(Scene):
         self.preview_path = []
         if self.hover is None or self.bf is None or self.bf.mage is None:
             return
-        if self.mode in ("bolt", "pierce", "reflect"):
+        if self.mode in ("bolt", "pierce", "reflect", "sniper"):
             spell = SPELL_LIBRARY.get(self.mode)
             if spell is not None and self.hover in self.targets:
                 from ..combat import _bolt_path, _reflect_path
                 if spell.kind == SpellKind.REFLECT:
                     self.preview_path = _reflect_path(self.bf, self.bf.mage.pos, self.hover, spell.range)
                 else:
+                    pierce = spell.kind in (SpellKind.PIERCE, SpellKind.SNIPER)
                     self.preview_path = _bolt_path(self.bf, self.bf.mage.pos, self.hover,
-                                                   pierce=spell.kind == SpellKind.PIERCE)
+                                                   pierce=pierce)
 
     def _on_cell_click(self, cell: tuple[int, int]) -> None:
         assert self.bf is not None and self.bf.mage is not None
@@ -315,7 +344,9 @@ class CombatScene(Scene):
         spell = SPELL_LIBRARY.get(self.mode)
         if spell is None:
             return
-        if cell not in self.targets:
+        # Self-centred spells (Escape, Deflection) fire on any click.
+        self_centred = spell.kind in (SpellKind.ESCAPE, SpellKind.FEAR)
+        if not self_centred and cell not in self.targets:
             self._toast_msg("Invalid target", theme.RED)
             return
         result = cast_spell(self.bf, spell, cell)
@@ -340,6 +371,12 @@ class CombatScene(Scene):
         # Check for immediate victory (king slain by the cast).
         if self.bf.king() is None:
             self._finish(Outcome.VICTORY)
+            return
+        # Discovered Attack grants a free extra action: skip the enemy phase.
+        if self.bf.mage is not None and self.bf.mage.extra_action:
+            self.bf.mage.extra_action = False
+            self._toast_msg("Extra action!", theme.GOLD_BRIGHT, 1.2)
+            self._select_move()
             return
         # Enter the enemy phase.
         self._busy = 0.45
@@ -611,7 +648,7 @@ class CombatScene(Scene):
         pygame.draw.circle(surface, (18, 18, 24), (cx, cy), radius)
         pygame.draw.circle(surface, MAGE_COL, (cx, cy), radius, 3)
         size = int(self.cell * 0.9)
-        piece = self._piece_surface("bishop", size, MAGE_CORE)
+        piece = self._piece_surface("king", size, MAGE_CORE)
         surface.blit(piece, piece.get_rect(center=(cx, cy - 2)))
 
     # ------------------------------------------------------------------
@@ -669,13 +706,20 @@ class CombatScene(Scene):
             return
         bw, bh = 150, 64
         gap = 10
-        total = n * bw + (n - 1) * gap
-        x0 = (config.WINDOW_WIDTH - 340 - total) // 2 + 20
-        y0 = config.WINDOW_HEIGHT - bh - 16
-
+        # Available width left of the HUD panel.
+        avail = config.WINDOW_WIDTH - 340
+        per_row = max(1, (avail + gap) // (bw + gap))
+        rows = (n + per_row - 1) // per_row
+        # Stack rows upward from the bottom edge.
         for i, sid in enumerate(mage.spells):
             spell = SPELL_LIBRARY[sid]
-            r = pygame.Rect(x0 + i * (bw + gap), y0, bw, bh)
+            row = i // per_row
+            col = i % per_row
+            in_row = min(per_row, n - row * per_row)
+            row_w = in_row * bw + (in_row - 1) * gap
+            x0 = (avail - row_w) // 2 + 20
+            y0 = config.WINDOW_HEIGHT - bh - 16 - (rows - 1 - row) * (bh + gap)
+            r = pygame.Rect(x0 + col * (bw + gap), y0, bw, bh)
             active = self.mode == sid
             ready = mage.ready(sid)
             fill = theme.BG_PANEL_LIGHT if active else theme.BG_PANEL

@@ -32,7 +32,7 @@ threats, position yourself, and find the angle to strike. Built with
   and the king strikes in all eight directions. Red cells show every threat.
 - **Line of sight and cover** - walls and pillars block sight and movement;
   rubble blocks movement but not sight.
-- **Seven spells** with clear rules (range, area, cooldown, line of sight):
+- **21 spells** with clear rules (range, area, cooldown, line of sight):
   - **Arcane Bolt** - straight-line projectile.
   - **Blink** - teleport to a visible cell.
   - **Arcane Blast** - area explosion.
@@ -40,6 +40,12 @@ threats, position yourself, and find the angle to strike. Built with
   - **Phase Lance** - bolt that ignores walls.
   - **Ricochet** - bolt that bounces off the first wall.
   - **Dominate** - turn an enemy into a temporary ally.
+  - **14 chess-tactic spells** - each tied to a real tactic: Open Lines
+    (push), Pawn Break (destroy a wall), Windmill (rank+file AoE), Fork (two
+    targets), Sacrifice (life for tempo), Stalemate (flee), Deflection (fear),
+    Discovered Attack (extra action), Pin (freeze), Minefield (traps),
+    Triangulation (tempo), Skewer (hit the piece behind), Interference (raise a
+    sight wall) and Clearance (sidestep + shove).
 - **Sanctuary puzzles** - each spell is taught by a themed chess tactic
   (open file, long diagonal, fork, pin, smothered mate...). Solve it to learn
   the spell; a wrong move resets the trial and costs a little life.
@@ -89,6 +95,20 @@ offered spells and must solve its puzzle to learn it.
 | Phase Lance  | The leaping knight  | `t_pierce`          |
 | Ricochet     | The discovered line | `t_reflect`         |
 | Dominate     | The pin             | `t_charm`           |
+| Open Lines   | Opening lines       | `t_open_lines`      |
+| Pawn Break   | The pawn break      | `t_pawn_break`      |
+| Windmill     | The windmill        | `t_windmill`        |
+| Fork         | The fork            | `t_fork`            |
+| Sacrifice    | The sacrifice       | `t_sacrifice`       |
+| Stalemate    | The escape          | `t_escape`          |
+| Deflection   | The deflection      | `t_deflection`      |
+| Discovered Attack | The discovered attack | `t_discovered` |
+| Pin          | The pin             | `t_pin`             |
+| Minefield    | The trap            | `t_trap`            |
+| Triangulation | The triangulation  | `t_tempo`           |
+| Skewer       | The skewer          | `t_skewer`          |
+| Interference | The interference    | `t_interference`    |
+| Clearance    | The clearance       | `t_clearance`       |
 
 ## Project layout
 
@@ -134,5 +154,7 @@ python tools/screenshots.py    # writes PNGs of each scene to tools/shots/
 
 The smoke test checks that every spell has a valid teaching puzzle, that the
 combat rules (bolt, pierce, blast, teleport, shield, charm, threat map) behave
-correctly, that generated levels are solvable with a reachable sanctuary, that
+correctly, that each chess-tactic spell (push, break, windmill, fork, sacrifice,
+escape, fear, discover, pin, mine, tempo, skewer, wall, clearance) resolves as
+documented, that generated levels are solvable with a reachable sanctuary, that
 the run flow carries spells across descents, and that every scene renders.

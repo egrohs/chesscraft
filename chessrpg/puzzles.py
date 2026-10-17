@@ -240,6 +240,119 @@ THEMED_PUZZLES: dict[str, Puzzle] = {
         briefing="A pinned piece cannot move. Sacrifice to drag the king out.",
         hint="Sacrifice the bishop on f7, then fork king and queen with the knight.",
     ),
+    # -- chess-tactic spells -------------------------------------------
+    # Open Lines -> clearing a file for the rook.
+    "open_lines": Puzzle(
+        id="t_open_lines", name="The Cleared File",
+        fen="6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
+        solution=["a1a8"], goal="mate", difficulty=1,
+        briefing="Open a line and the rook pours through it.",
+        hint="The a-file is clear - slide the rook to the eighth rank.",
+    ),
+    # Pawn Break -> a pawn thrust that cracks the structure.
+    "pawn_break": Puzzle(
+        id="t_pawn_break", name="The Pawn Break",
+        fen="8/P6k/8/8/8/8/6K1/8 w - - 0 1",
+        solution=["a7a8q"], goal="promote", difficulty=1,
+        briefing="A pawn break smashes a hole in the defence. Push through.",
+        hint="March the pawn to the eighth rank and promote.",
+    ),
+    # Windmill -> a rook sweeping rank and file.
+    "windmill": Puzzle(
+        id="t_windmill", name="The Windmill",
+        fen="6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1",
+        solution=["d1d8"], goal="mate", difficulty=1,
+        briefing="A windmill sweeps the whole rank and file. Let it spin.",
+        hint="The eighth rank is empty - the rook sweeps to d8.",
+    ),
+    # Fork -> one move hitting two targets.
+    "fork": Puzzle(
+        id="t_fork", name="The Fork",
+        fen="r3k2r/ppp2ppp/8/3N4/8/8/PPP2PPP/R3K2R w KQkq - 0 1",
+        solution=["d5c7", "e8d7", "c7a8"], goal="win", difficulty=2,
+        briefing="A fork attacks two pieces at once. Find the square.",
+        hint="A knight move that checks the king and hits a rook.",
+    ),
+    # Sacrifice -> giving material for a greater gain.
+    "sacrifice": Puzzle(
+        id="t_sacrifice", name="The Sacrifice",
+        fen="r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 0 1",
+        solution=["c4f7", "e8f7", "f3g5"], goal="win", difficulty=4,
+        briefing="Give material to gain something greater. Sacrifice on f7.",
+        hint="Sacrifice the bishop on f7, then fork king and queen.",
+    ),
+    # Stalemate -> escaping to safety.
+    "escape": Puzzle(
+        id="t_escape", name="The Escape",
+        fen="8/8/8/4k3/8/8/4P3/4K3 w - - 0 1",
+        solution=["e1d2"], goal="win", difficulty=1,
+        briefing="When danger closes in, slip to a safer square.",
+        hint="Step the king toward the centre, away from the edge.",
+    ),
+    # Deflection -> driving a piece away.
+    "deflection": Puzzle(
+        id="t_deflection", name="The Deflection",
+        fen="6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
+        solution=["a1a8"], goal="mate", difficulty=1,
+        briefing="Deflect the defender and the back rank falls.",
+        hint="The back rank is undefended - the rook delivers mate.",
+    ),
+    # Discovered attack -> a hidden line revealed.
+    "discovered": Puzzle(
+        id="t_discovered", name="The Discovered Attack",
+        fen="r3k2r/ppp2ppp/8/3N4/8/8/PPP2PPP/R3K2R w KQkq - 0 1",
+        solution=["d5c7", "e8d7", "c7a8"], goal="win", difficulty=2,
+        briefing="Move one piece and reveal the attack of another.",
+        hint="The knight uncovers the line - check the king and hit a rook.",
+    ),
+    # Pin -> freezing a piece in place.
+    "pin": Puzzle(
+        id="t_pin", name="The Pin",
+        fen="r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 0 1",
+        solution=["c4f7", "e8f7", "f3g5"], goal="win", difficulty=4,
+        briefing="A pinned piece cannot move. Freeze it, then strike.",
+        hint="Sacrifice on f7 to drag the king out, then fork with the knight.",
+    ),
+    # Trap -> a hidden mine waiting for the enemy.
+    "trap": Puzzle(
+        id="t_trap", name="The Trap",
+        fen="6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1",
+        solution=["d1d8"], goal="mate", difficulty=1,
+        briefing="Set the trap and let the enemy walk into it.",
+        hint="The back rank is a trap - the rook springs it on d8.",
+    ),
+    # Triangulation -> losing a tempo to gain an advantage.
+    "tempo": Puzzle(
+        id="t_tempo", name="The Triangulation",
+        fen="8/8/8/4k3/8/8/4P3/4K3 w - - 0 1",
+        solution=["e1d2"], goal="win", difficulty=1,
+        briefing="Lose a tempo to gain a better position. A quiet step wins.",
+        hint="Step the king toward the centre to support the pawn.",
+    ),
+    # Skewer -> striking the piece behind.
+    "skewer": Puzzle(
+        id="t_skewer", name="The Skewer",
+        fen="6rk/6pp/8/6N1/8/8/8/6K1 w - - 0 1",
+        solution=["g5f7"], goal="mate", difficulty=3,
+        briefing="A skewer strikes the piece behind the first. Leap to the kill.",
+        hint="A knight check the king cannot escape - nothing can take it.",
+    ),
+    # Interference -> cutting a line with a wall.
+    "interference": Puzzle(
+        id="t_interference", name="The Interference",
+        fen="6k1/5ppp/8/8/8/8/5PPP/2B3K1 w - - 0 1",
+        solution=["c1a3"], goal="win", difficulty=2,
+        briefing="Cut the enemy's line of attack. Block the diagonal.",
+        hint="Swing the bishop to a3 to control the long diagonal.",
+    ),
+    # Clearance -> moving a piece aside to free a square.
+    "clearance": Puzzle(
+        id="t_clearance", name="The Clearance",
+        fen="8/8/8/4k3/8/8/4P3/4K3 w - - 0 1",
+        solution=["e1d2"], goal="win", difficulty=1,
+        briefing="Clear the square so another piece can use it.",
+        hint="Step the king aside to free the e-file for the pawn.",
+    ),
 }
 
 # Spell id -> tactical theme key.
@@ -251,6 +364,21 @@ SPELL_THEME = {
     "pierce": "pierce",
     "reflect": "reflect",
     "charm": "charm",
+    # -- chess-tactic spells -------------------------------------------
+    "push": "open_lines",
+    "break": "pawn_break",
+    "cross": "windmill",
+    "fork": "fork",
+    "sacrifice": "sacrifice",
+    "escape": "escape",
+    "fear": "deflection",
+    "discover": "discovered",
+    "pin": "pin",
+    "mine": "trap",
+    "tempo": "tempo",
+    "sniper": "skewer",
+    "wall": "interference",
+    "clearance": "clearance",
 }
 
 

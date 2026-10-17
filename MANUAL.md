@@ -156,6 +156,27 @@ Cada feitiço tem **alcance**, **cooldown** e regras próprias. Você começa co
 | **Ricochet**     | Projétil    | 7       | 2    | 2        | Voa e **ricocheteia uma vez** na primeira parede, seguindo a linha refletida. |
 | **Dominate**     | Encantamento| 4       | -    | 4        | Converte um inimigo visível em **aliado por 3 turnos**; depois ele vira pó. Não funciona no Rei. |
 
+#### Feitiços de tática de xadrez
+
+Cada um destes feitiços é ensinado por uma **tática de xadrez** específica.
+
+| Feitiço            | Tática (xadrez)      | Tipo        | Alcance | Dano | Cooldown | Regra |
+| ------------------ | -------------------- | ----------- | :-----: | :--: | :------: | ----- |
+| **Open Lines**     | Abrir linhas         | Empurrão    | 5       | -    | 2        | Empurra um inimigo (e os que estiverem atrás) **1 casa para longe** ao longo da linha, abrindo um corredor. Não afeta o Rei. |
+| **Pawn Break**     | Pawn break           | Ruptura     | 4       | -    | 3        | **Destrói** uma parede, pilar ou entulho, abrindo um buraco na defesa. |
+| **Windmill**       | Windmill             | Área (cruz) | 8       | 2    | 4        | Golpeia **todos** os inimigos na sua **linha e coluna** (a cruz do seu rank/file). |
+| **Fork**           | Garfo / Duplo        | Multi-alvo  | 5       | 2    | 2        | Atinge **dois** inimigos: o alvo e o inimigo mais próximo ao lado dele. |
+| **Sacrifice**      | Sacrifício           | Utilidade   | -       | -    | 3        | Paga **1 de vida** para ganhar **2 de escudo** e **zerar todos os cooldowns**. |
+| **Stalemate**      | Afogado              | Fuga        | 6       | -    | 3        | Teleporta para a célula **mais segura** visível (a mais longe das ameaças). |
+| **Deflection**     | Desvio               | Medo        | 4 (raio 2) | - | 3        | Inimigos próximos **fogem 1 casa** de você neste turno e **não atacam**. |
+| **Discovered Attack** | Ataque descoberto | Tempo       | 6       | 2    | 3        | Causa dano **e concede uma ação extra** neste turno (ganha tempo). |
+| **Pin**            | Cravada (pin)        | Controle    | 5       | -    | 3        | **Imobiliza** um inimigo por **2 turnos**: ele não move nem ataca. Não afeta o Rei. |
+| **Minefield**      | Trap                 | Armadilha   | 5       | 3    | 2        | Coloca uma **mina** numa célula de chão; ela só detona quando um **inimigo** pisa nela. |
+| **Triangulation**  | Triangulação         | Tempo       | -       | -    | 2        | Perde um tempo: ganha **1 de escudo** e **reduz todos os cooldowns em 1**. |
+| **Skewer**         | Espeto (skewer)      | Sniper      | 7       | 2    | 2        | Tiro perfurante que **ignora o primeiro** inimigo da linha e acerta o **de trás**. |
+| **Interference**   | Interference         | Muro        | 5       | -    | 3        | Ergue um **muro temporário** (3 turnos) que **corta linha de visão** e tiros. |
+| **Clearance**      | Clearance            | Reposicion. | 1       | -    | 2        | Dá um passo lateral para uma casa adjacente, **empurrando** o inimigo ali 1 casa adiante. |
+
 ### 7.1 Detalhes importantes
 
 - **Linha reta:** Bolt e Phase Lance só podem ser lançados em linha/coluna/
@@ -209,6 +230,20 @@ Santuários são a forma de **aprender feitiços**.
 | Phase Lance    | O cavalo saltador    | `t_pierce`      |
 | Ricochet       | A linha descoberta   | `t_reflect`     |
 | Dominate       | O cravamento (pin)   | `t_charm`       |
+| Open Lines     | Abrir linhas         | `t_open_lines`  |
+| Pawn Break     | Pawn break           | `t_pawn_break`  |
+| Windmill       | Windmill             | `t_windmill`    |
+| Fork           | Garfo / Duplo        | `t_fork`        |
+| Sacrifice      | Sacrifício           | `t_sacrifice`   |
+| Stalemate      | Afogado              | `t_escape`      |
+| Deflection     | Desvio               | `t_deflection`  |
+| Discovered Attack | Ataque descoberto | `t_discovered`  |
+| Pin            | Cravada              | `t_pin`         |
+| Minefield      | Trap                 | `t_trap`        |
+| Triangulation  | Triangulação         | `t_tempo`       |
+| Skewer         | Espeto               | `t_skewer`      |
+| Interference   | Interference         | `t_interference`|
+| Clearance      | Clearance            | `t_clearance`   |
 
 ---
 
